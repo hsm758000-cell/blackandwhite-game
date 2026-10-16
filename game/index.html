@@ -1266,6 +1266,10 @@ html.nat,html.nat body{background:transparent!important}
 #lgCodeBox{width:100%}#lgCodeBox textarea{width:100%;box-sizing:border-box;background:#0008;color:#fff;border:1px solid #ffffff30;border-radius:.6cqw;padding:.6cqw;font:inherit;font-size:clamp(8px,1cqw,11px);word-break:break-all}
 #lgCodeBox .row{display:flex;align-items:center;justify-content:space-between;gap:1cqw;margin-top:.4cqw}
 html.proxy .stage{visibility:hidden}
+.nat .stage.shake,.nat .stage.bigshake{animation:none!important}
+.nat .stage{translate:none!important}
+.nat #battle{transform:none!important}
+.nat .stage{position:relative}
 
 /* ===== 공통 (밝은 화면 / 어두운 화면) ===== */
 .light{background:#fff;color:#1c1a2e;overflow:hidden}
@@ -1532,7 +1536,7 @@ html.proxy .stage{visibility:hidden}
 .partis-h{font-family:var(--f-ui);font-size:clamp(9px,1.1cqw,12px);color:#1c1a2e;letter-spacing:.05em;border-bottom:1px solid #1c1a2e22;padding-bottom:.2cqw}
 .acard .tno{position:absolute;right:5%;top:6%;width:1.6em;height:1.6em;border-radius:50%;background:#1c1a2ec0;color:#fff;font-size:clamp(7px,.85cqw,9px);display:grid;place-items:center}
 .acard.hasart .aic{display:none}
-.ccard .artov.has[style]{background-image:var(--bg);background-size:cover;background-position:50% 30%}
+.ccard .artov.has[style]{background:var(--bg)}
 .pprep{margin-top:.8cqw;display:flex;align-items:center;gap:1cqw;padding:.6cqw 1cqw;background:#1c1a2e;color:#fff;border-radius:.4cqw}
 .pprep b{font-family:var(--f-ui);font-weight:400;font-size:clamp(11px,1.4cqw,15px)}
 .pprep small{font-size:clamp(8px,1cqw,11px);color:#c9c6dc}
@@ -1767,6 +1771,7 @@ html.proxy .stage{visibility:hidden}
 @keyframes ssrBan{0%{opacity:0;transform:translateY(-50%) scaleX(.2)}12%{opacity:1;transform:translateY(-50%) scaleX(1)}80%{opacity:1}100%{opacity:0}}
 
 
+.grc .front .aa{position:absolute;inset:0}
 .aa.hasart{background:var(--bg)}
 .aa.hasart .bigel,.aa.hasart .ico{display:none}
 .aa.hasart::before{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#0d0b12c0 0,#0000 45%,#0000 80%,#0d0b1260);pointer-events:none}
@@ -6725,10 +6730,15 @@ function runFinish(win,quit){
   const stageEl=$('stage');
   try{N.lite(!!window.LITE)}catch(e){}
   const SR=()=>stageEl.getBoundingClientRect();
-  function rects(){const s=SR();if(!s.width)return;N.stage(s.left,s.top,s.width,s.height,innerWidth);
-    const fi=$('foeAct').querySelector('img.fspr');if(fi){const r=fi.getBoundingClientRect();N.rect('foe',r.left,r.top,r.width,r.height)}
-    const fb=$('foe');if(fb){const r=fb.getBoundingClientRect();N.rect('fbox',r.left,r.top,r.width,r.height)}
-    const hi=$('heroImg');if(hi){const r=hi.getBoundingClientRect();N.rect('hero',r.left,r.top,r.width,r.height)}}
+  /* 레이아웃 좌표(transform/흔들림 무시) — 스테이지 기준 오프셋 누적 */
+  function lay(el){let x=0,y=0,e=el;while(e&&e!==stageEl){x+=e.offsetLeft;y+=e.offsetTop;e=e.offsetParent}return{x,y,w:el.offsetWidth,h:el.offsetHeight}}
+  function stageLay(){let x=0,y=0,e=stageEl;while(e){x+=e.offsetLeft;y+=e.offsetTop;e=e.offsetParent}return{left:x-(window.scrollX||0),top:y-(window.scrollY||0),width:stageEl.offsetWidth,height:stageEl.offsetHeight}}
+  function rects(){const s=stageLay();if(!s.width)return;N.stage(s.left,s.top,s.width,s.height,innerWidth);
+    const fi=$('foeAct').querySelector('img.fspr');if(fi){const r=lay(fi);N.rect('foe',s.left+r.x,s.top+r.y,r.w,r.h)}
+    const fb=$('foe');if(fb){const r=lay(fb);N.rect('fbox',s.left+r.x,s.top+r.y,r.w,r.h)}
+    const hi=$('heroImg');if(hi){const r=lay(hi);N.rect('hero',s.left+r.x,s.top+r.y,r.w,r.h)}}
+  setInterval(()=>{if(!$('battle').hidden)rects()},700);
+  window.addEventListener('scroll',()=>{try{window.scrollTo(0,0)}catch(e){}rectsSoon()});if(window.visualViewport)visualViewport.addEventListener('resize',rectsSoon);
   let rectT=0;function rectsSoon(){clearTimeout(rectT);rectT=setTimeout(()=>{rects();requestAnimationFrame(rects);setTimeout(rects,250)},20)}
   let bgKey='';function bgNow(){const s=SR();const k=Math.round(s.width)+'x'+Math.round(s.height);if(!s.width||k===bgKey)return;bgKey=k;try{N.bg(ARENA.exportBg(Math.min(2.5,(devicePixelRatio||1))))}catch(e){}}
   let bgT=0;function bgSoon(){clearTimeout(bgT);bgT=setTimeout(bgNow,120)}
