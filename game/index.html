@@ -7124,7 +7124,7 @@ function showWin(win,drop){
   const reg=B.region,nf=B.team.length,lv=(reg&&reg.lv)||Math.round(B.heroes.reduce((a,u)=>a+u.lv,0)/B.heroes.length);
   const RW=(reg&&reg.run)?runReward(win):null;
   const gold=RW?RW.gold:(win?tierGold(lv):Math.round(tierGold(lv)*.25)),books=0,aexp=win?15+5*nf:5,xpGain=RW?RW.exp:(win?tierExp(lv):Math.round(tierExp(lv)*.25));
-  const gems=RW?RW.gems:(win?(reg?tierGems(reg.tier):25):5);PROG.gems=(PROG.gems||0)+gems;const shards=0;PROG.gold+=gold;PROG.exp+=xpGain;if(RW&&RW.drop)drop=RW.drop;
+  const gems=RW?RW.gems:(win?(reg?tierGems(reg.tier):8):2);PROG.gems=(PROG.gems||0)+gems;const shards=0;PROG.gold+=gold;PROG.exp+=xpGain;if(RW&&RW.drop)drop=RW.drop;
   let lvup=false;PROG.acctExp+=aexp;while(PROG.acctExp>=acctNeed(PROG.acctLv)){PROG.acctExp-=acctNeed(PROG.acctLv);PROG.acctLv++;lvup=true}
   saveProg();
   show('win');$('battle').hidden=false;$('win').hidden=false;
@@ -7385,7 +7385,7 @@ const DIFFS=[
   {i:0,n:'입문',lv:1,drop:.2},{i:1,n:'초급',lv:5,drop:.28},{i:2,n:'중급',lv:10,drop:.36},{i:3,n:'숙련',lv:16,drop:.44},
   {i:4,n:'상급',lv:22,drop:.52},{i:5,n:'고급',lv:30,drop:.6},{i:6,n:'극한',lv:40,drop:.7},{i:7,n:'심연',lv:50,drop:.8}];
 const tierGold=lv=>120+lv*25;
-const tierGems=d=>d?30+d.i*20:40; // 입문 30 → 심연 170
+const tierGems=d=>d?Math.min(40,10+Math.round(d.i*30/7)):12; // 입문 10 → 심연 40
 const tierExp=lv=>60+lv*14;
 function partyLv(){const ids=(PROG.party||['rod']).filter(id=>id&&isOwned(id));return ids.length?Math.round(ids.reduce((a,id)=>a+chP(id).lv,0)/ids.length):1}
 function recTier(){const L=partyLv();let r=DIFFS[0];for(const d of DIFFS)if(d.lv<=L+3)r=d;return r}
@@ -7516,8 +7516,8 @@ $('runQuit').onclick=()=>{if(!RUN)return;if(Date.now()-(window._rq||0)<2000){run
 function runReward(win){
   const st=RUN.stage,nd=RUN.node,lv=runLv(st,nd),last=st===3&&nd===6;
   if(!win)return{gold:0,exp:0,gems:0,last:true,lose:true};
-  let gold=100+lv*20+st*60,exp=60+lv*14+st*20,gems=12+st*8+nd*2,drop=null;
-  if(nd===6){gems+=60;const pool=RUN_REG().flatMap(r=>r.items).filter(i=>!INV.owned.includes(i.id)&&(st<3||i.r>=5));
+  let gold=100+lv*20+st*60,exp=60+lv*14+st*20,gems=6+st*3+Math.floor(nd/2),drop=null;
+  if(nd===6){gems+=15;const pool=RUN_REG().flatMap(r=>r.items).filter(i=>!INV.owned.includes(i.id)&&(st<3||i.r>=5));
     if(pool.length){const it=pool[Math.floor(Math.random()*pool.length)];INV.owned.push(it.id);drop=ITEM_BY[it.id];RUN.loot.arts.push(it.id);saveInv()}else gold+=500}
   if(last){gold+=5000+lv*100;exp+=3000+lv*100;gems+=300}
   RUN.loot.gold+=gold;RUN.loot.exp+=exp;RUN.loot.gems+=gems;
