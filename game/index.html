@@ -1804,12 +1804,8 @@ html.nat,html.nat body{background:#000!important}
 .dbtns{bottom:1.2cqw}
 .dbtns .gob{padding:.5cqw 2.6cqw;font-size:clamp(11px,1.45cqw,16px)}
 /* 캐릭터 상세 · 아티팩트: 카드 줄을 왼쪽 메뉴와 오른쪽 정보 사이에만 배치 */
-.dartab .abigwrap{left:24cqw;right:33.5cqw;top:46%;transform:translateY(-50%);width:auto;justify-content:center;gap:1cqw;flex-wrap:nowrap}
-.dartab .abigwrap .abig,.dartab .abigph{width:clamp(78px,7.9cqw,150px);flex:0 0 auto}
-.dartab .abigwrap .abig{padding:.35cqw;gap:.3cqw}
-.dartab .abigwrap .abig .anm{font-size:clamp(9px,1.1cqw,13px)}
-.dartab .abigwrap .abig .ast{font-size:clamp(7px,.85cqw,10px)}
-.dartab .abigph b{font-size:1.6em}.dartab .abigph small{font-size:.5em}
+.dartab .abigwrap{left:24cqw;right:33.5cqw;top:46%;transform:translateY(-50%);width:auto;justify-content:center;gap:2cqw;flex-wrap:nowrap}
+.dartab .abigwrap .abig,.dartab .abigph{width:clamp(110px,13cqw,200px);flex:0 0 auto}
 .ainfo{top:7.5cqw;bottom:6.4cqw;overflow:hidden;gap:.4cqw}
 .ainfo .dstat td{color:#1c1a2e!important;opacity:1}
 .ainfo .dstat tr:nth-child(odd) td{background:#f4f4f8}
@@ -6247,7 +6243,7 @@ const dArtTab=document.createElement('div');dArtTab.className='dartab';$('detail
 const dArtInfo=document.createElement('aside');dArtInfo.className='ainfo';dArtInfo.id='dArtInfo';dArtTab.appendChild(dArtInfo);
 let dArtSel=null;
 function renderDetailArt(){
-  const eqs=charEq(CUR).map(id=>ITEM_BY[id]);
+  const eqs=[INV.ceq[CUR]].filter(Boolean).map(id=>ITEM_BY[id]); // 캐릭터 전용 아티팩트만 (팀 아티팩트는 편성 화면에서)
   if(!dArtSel||!eqs.find(i=>i.id===dArtSel))dArtSel=eqs[0]?eqs[0].id:null;
   dArtTab.querySelector('.abigwrap')?.remove();dArtTab.querySelector('.noart')?.remove();
   const w=document.createElement('div');w.className='abigwrap';
