@@ -6820,10 +6820,14 @@ function runFinish(win,quit){
   // 참격·스킬 VFX(LightSlash/RiftSlash/GoldCrescent/SkillVFX)는 기존 캔버스 라이브러리를 그대로 사용 — 원본과 동일한 연출
   {const _k=kick;kick=function(){_k()}}
   // 콘텐츠 자동 업데이트 상태 (Updater → __updateState)
+  // 업데이트 적용: 로비에 있을 때(전투·소환 중이 아닐 때) 바로 새로고침해서 적용
+  function tryApplyUpd(){const v=window.__updReady;if(!v)return;const lobby=$('lobby')&&!$('lobby').hidden,busy=($('battle')&&!$('battle').hidden)||($('gacha')&&!$('gacha').hidden);
+    if(lobby&&!busy){toast('업데이트 v'+v+' 적용 중…');try{if(window.ACC&&ACC.save)ACC.save()}catch(e){}setTimeout(()=>location.reload(),900)}else toast('업데이트 v'+v+' 준비 완료 — 로비로 돌아가면 적용됩니다')}
+  {const _s2=show;show=function(id){_s2(id);if(id==='lobby'&&window.__updReady)setTimeout(tryApplyUpd,400)}}
   let updN=0;window.__updateState=(st,a,b)=>{const onLoad=!$('loading').hidden;
     if(st==='downloading')toast('새 버전 v'+a+' 다운로드 중…');
     else if(st==='progress'){if(a===b||a-updN>=5){updN=a;toast('업데이트 다운로드 '+a+'/'+b)}}
-    else if(st==='ready'){if(onLoad)setTimeout(()=>location.reload(),300);else toast('업데이트 v'+a+' 준비 완료 — 다음 실행 시 적용됩니다')}
+    else if(st==='ready'){if(onLoad)setTimeout(()=>location.reload(),300);else{window.__updReady=a;tryApplyUpd()}}
     else if(st==='error'){/* 조용히 무시 (오프라인 등) */}};
   try{const v=N.contentVer();const n=document.querySelector('#setModal .setnote');if(n&&v)n.textContent+=' · 콘텐츠 v'+v;const f=document.querySelector('#loading .ldstep');if(f&&v){const b=document.createElement('div');b.style.cssText='position:absolute;right:1.2cqw;bottom:.6cqw;font-size:clamp(8px,.9cqw,10px);color:#ffffff70';b.textContent='v'+v;f.parentElement.appendChild(b)}}catch(e){}
   // 설정 연동
