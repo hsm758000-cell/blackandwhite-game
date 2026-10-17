@@ -1,7 +1,7 @@
 {
-"ver": 15,
+"ver": 16,
 "files": {
-"game/index.html": "0dd4c05d3c5f3eb5075d66c6fa487c5f45c90223",
+"game/index.html": "e9f8b092bcf221d3725b71dc1a38d6b64462770d",
 "game/yuria_ult.mp4": "aeae775a3c2b6cae3b6e7fa58d9d9b69ceedc1f9",
 "game/ult.mp4": "8c4d294ddc2f9e50c1b7c3d856361a4a1bf78839",
 "game/bgm/lobby.mp3": "baf0af96eef08e9379cfca882db0663a15e761f5",
@@ -23,7 +23,7 @@
 "game/img/art_l2.webp": "b5e0ebb5da3d812c7e583526a4fd2b01e86ccff6",
 "game/img/lobby.webp": "578762797d02e6a81c5290d86b9f6940b2496eba",
 "game/img/art_s1.webp": "9e7dfb5f399b786bbacc5dff1e322162094ada51",
-"game/img/yuria_face_sq.webp": "36b0cc9822a3db54291648c956e2e42834252e2c",
+"game/img/yuria_face_sq.webp": "6c618f73278aec55cd5bca0ef6facf4f0e93cff5",
 "game/img/art_g1.webp": "e5045186e064301ead8b5cf847868e07df643a9b",
 "game/img/sigart.webp": "f48be1754b38d2cc6987dd323133ac3ed32e7e46",
 "game/img/art_f3.webp": "c78aa89057c00fafdf2e3f55e3e01bbf3e8b334f",
