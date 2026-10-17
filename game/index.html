@@ -6760,14 +6760,17 @@ function runFinish(win,quit){
     const D=CLIP[key];clipBusyN=true;N.clip(key);
     return new Promise(r=>{if(o.onHit&&c.hit!=null)setTimeout(()=>{if(!B.over)o.onHit()},D[1]*1000);setTimeout(()=>{clipBusyN=false;r(true)},D[0]*1000)})};
   foeGhosts=function(){N.anim('foe','ghost',0)};
-  vfxDust=async function(){N.anim('foe','dust',0);await sleep(2600)};
+  vfxDust=async function(){try{N.anim('foe','dust',0)}catch(e){}await sleep(2600)};
+  // 안전장치: 전투 종료 후 결과 화면이 뜨지 않으면 강제로 진행
+  {const _sw=showWin;showWin=function(w,d){if(B&&B.__win)return;if(B)B.__win=true;return _sw(w,d)}}
+  {const _end=end;end=function(win){const b=B;_end(win);setTimeout(()=>{try{if(b&&B===b&&!b.__win)showWin(win,null)}catch(e){}},3000)}}
   heroOut=function(){N.anim('hero','out',0)};slideBack=function(){N.anim('hero','back',0)};
   {const _cls=cls;cls=function(el,c){_cls(el,c);const id=el&&el.id;if(!id)return;
     if(id==='foeHit'&&c==='hit')N.anim('foe','hit',0);
     else if(id==='foeAct'){if(c==='knock'||c==='buff'||c==='dead'||c==='atk'||c==='wind')N.anim('foe',c,0);else if(c==='big')N.anim('foe','atkbig',0)}
     else if(id==='heroHit'){if(c==='hit'||c==='dead'||c==='awakefx'||c==='bloodfx')N.anim('hero',c,0)}}}
-  {const _vl=vfxFoeLegacy;vfxFoeLegacy=function(m,oi){N.anim('foe','wind',.26);return _vl(m,oi)}}
-  {const _bu=vfxBossUlt;vfxBossUlt=function(f,m,oi){N.anim('foe','wind',1.3);return _bu(f,m,oi)}}
+  {const _vl=vfxFoeLegacy;vfxFoeLegacy=function(m,oi){if(!foe().clips)N.anim('foe','wind',.26);return _vl(m,oi)}}
+  // 보스(프레임 모션)는 정지 모습과 모션 시작 프레임이 같은 자리여야 하므로 사전 동작 변형을 걸지 않는다
   {const _sh=shake;shake=function(big){_sh(big);N.shake(!!big)}}
   // 영역 배경
   {const _u=BG.update;BG.update=function(){_u();const ts=(B&&B.domain)?B.domain.tints:[];const bl=ts.some(t=>t==='blood'),im=ts.some(t=>t!=='blood');N.dom(!ts.length?'':bl&&im?'coexist':bl?'blood':'moon')}}
