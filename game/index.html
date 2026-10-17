@@ -1818,6 +1818,16 @@ html.nat,html.nat body{background:#000!important}
 /* 화면 전환: 흰 번쩍임 대신 어두운 페이드 */
 .flashd{position:absolute;inset:0;z-index:25;background:#05040a;pointer-events:none;animation:flashd .3s ease-out forwards}
 @keyframes flashd{0%{opacity:.55}100%{opacity:0}}
+/* ===== 온리 원 (Only One) ===== */
+.gacha.one .gstage .ghero.on{right:10%;top:1%;height:98%;bottom:auto;width:auto;filter:drop-shadow(0 0 1.5cqw #ffffff70)}
+.gacha.one .gbg-art.scene{opacity:1;filter:grayscale(.6) brightness(.8);mix-blend-mode:normal;background-size:cover;background-position:50% 30%}
+.gacha.one .gbg-art.scene::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0a0a0ee8 0,#0a0a0e90 45%,#0a0a0e30 100%)}
+.gacha.one .gbg-rays{opacity:.45}
+.ccard[data-id="one"] .arch img{object-position:60% 0;transform:scale(1.9);transform-origin:60% 11%}
+.ctile[data-id="one"] .cimg img{transform:scale(1.9);transform-origin:60% 10%;object-position:60% 0}
+.grc .chr img.on{transform:scale(1.9);transform-origin:60% 10%;object-position:60% 0}
+.detail[data-ch="one"] .ncircle img{object-position:50% 40%;transform:none}
+.detail[data-ch="one"] .dart{height:104%;transform:translateX(-50%)}
 
 </style>
 <div class="game">
@@ -1875,7 +1885,7 @@ html.nat,html.nat body{background:#000!important}
       <button class="lbanner" id="lBanner">
         <img src="img/face.webp" alt="">
         <span class="lbt"><small>PICK UP</small>흑월의 검객,<br>로스바이세</span>
-        <span class="ldots"><b class="on"></b><b></b></span>
+        <span class="ldots"><b class="on"></b><b></b><b></b></span>
       </button>
 
       <button class="levent y" data-g="1" aria-label="쿠죠 유리아 픽업"><img src="img/yuria_face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>7일</span></button>
@@ -4567,6 +4577,596 @@ window.SkillVFX = window.SkillVFX || {};
 window.SkillVFX[DEF.id] = { def: DEF, play: (canvas, opts) => VFX.play(DEF, canvas, opts), snapshot: (canvas, t, opts) => VFX.snapshot(DEF, canvas, t, opts) };
 })();
 
+/* =========================================================
+   DarkBurst VFX v1 — 암흑 압축 폭발 (캔버스 2D, 배경 투명)
+   ---------------------------------------------------------
+   큰 원 둘레의 암흑물질이 작은 핵으로 압축되었다가, 한순간에 팽창하며
+   폭발하는 광역 스킬. 시전자 모션 없음.
+   사용법
+     1) 이 파일 내용을 게임 HTML의 <script> 안에 그대로 붙여넣기
+     2) 스킬 사용 시:
+          DarkBurst.spawn(x, y, {
+            scale: 1,          // 크기 배율 (화면 짧은 변 700px 기준 1)
+            radius: 320,       // 시작 큰 원 반지름 (scale 배율 전)
+            screen: true,      // 화면 암전·반전·색수차 연출
+            onCompress(fx){},  // 압축 완료 순간 (1.05초) — 적 끌어당김 등
+            onBurst(fx){},     // 폭발 순간 (1.25초) — 범위 데미지
+            onEnd(fx){}        // 종료 (2.8초)
+          });
+     3) 게임 루프 매 프레임:
+          const ts = DarkBurst.timeScale();       // 히트스톱 0~1 (선택)
+          const [sx, sy] = DarkBurst.shake();     // 카메라 흔들림 (선택)
+          ctx.save(); ctx.translate(sx, sy);
+          ...게임 화면 그리기...
+          DarkBurst.draw(ctx);                    // ★ 게임 화면을 다 그린 뒤 (중력 렌즈 왜곡이 화면을 읽음)
+          ctx.restore();
+          DarkBurst.update(dt);
+   타이밍(초): 0.00~0.95 큰 원에서 암흑물질이 핵으로 빨려들며 압축
+               0.95~1.25 임계 상태 — 떨림, 렌즈 왜곡, 검은 번개 (onCompress 1.05)
+               1.25 폭발 — 검은 구체 급팽창 + 충격파 + 파편 (onBurst)
+               ~2.8 잔재 소멸
+   ========================================================= */
+(function (global) {
+  const DUR = 2.8, COMP = 1.05, BURST = 1.25;
+  const R = (a, b) => a + Math.random() * (b - a);
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const easeIn = x => Math.pow(clamp(x), 2.2);
+  const easeOut = x => 1 - Math.pow(1 - clamp(x), 3);
+  const easeOutQ = x => 1 - Math.pow(1 - clamp(x), 5);
+  const list = [];
+
+  function spawn(x, y, o = {}) {
+    const S = o.scale ?? 1, R0 = o.radius ?? 320;
+    /* 큰 원 둘레의 암흑물질 덩어리 — 나선을 그리며 핵으로 */
+    const motes = [];
+    for (let i = 0; i < 160; i++) {
+      const a = R(0, 6.283);
+      motes.push({ a, r0: R0 * R(.85, 1.25), t0: R(0, .35), dur: R(.55, .8), s: R(4, 14), spin: R(1.2, 3.2) * (Math.random() < .5 ? 1 : -1), hue: Math.random() < .3 ? 280 : 255 });
+    }
+    /* 둘레에서 핵으로 흘러드는 가닥 */
+    const streams = [];
+    for (let i = 0; i < 22; i++) streams.push({ a: R(0, 6.283), t0: R(0, .3), curl: R(-1.6, 1.6), w: R(2, 6) });
+    /* 압축 중 떨어지는 검은 번개 */
+    const bolts = [];
+    for (let i = 0; i < 12; i++) bolts.push({ t0: COMP - .1 + R(0, .3), a: R(0, 6.283), len: R(60, 170), life: R(.05, .1), seed: Math.random() * 1000 });
+    /* 폭발 파편 */
+    const debris = [];
+    for (let i = 0; i < 150; i++) { const a = R(0, 6.283); debris.push({ a, v: R(300, 1500), t0: BURST + R(0, .04), life: R(.5, 1.2), s: R(1.5, 5), dark: Math.random() < .6, spin: R(-8, 8) }); }
+    /* 폭발 후 남는 암흑 연기 */
+    const smoke = [];
+    for (let i = 0; i < 40; i++) { const a = R(0, 6.283); smoke.push({ a, d: R(40, 420), r: R(50, 140), t0: BURST + R(.05, .35), life: R(.9, 1.4), rise: R(10, 60) }); }
+    /* 폭발 광선(어두운 방사선 + 흰 림 라인) */
+    const rays = [];
+    for (let i = 0; i < 40; i++) rays.push({ a: R(0, 6.283), L: R(400, 1300), w: R(3, 16), t0: BURST, life: R(.3, .5) });
+
+    const fx = { x, y, S, R0, motes, streams, bolts, debris, smoke, rays, t: 0, comp: false, burst: false,
+      screen: o.screen !== false, onCompress: o.onCompress, onBurst: o.onBurst, onEnd: o.onEnd };
+    list.push(fx);
+    return fx;
+  }
+
+  function update(dt) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i]; fx.t += dt;
+      if (!fx.comp && fx.t >= COMP) { fx.comp = true; fx.onCompress && fx.onCompress(fx); }
+      if (!fx.burst && fx.t >= BURST) { fx.burst = true; fx.onBurst && fx.onBurst(fx); }
+      if (fx.t > DUR) { list.splice(i, 1); fx.onEnd && fx.onEnd(fx); }
+    }
+  }
+  function timeScale() {
+    let s = 1;
+    for (const fx of list) { const t = fx.t; if (t >= BURST && t < BURST + .1) s = 0; else if (t >= COMP + .1 && t < BURST) s = Math.min(s, .35); }   // 임계 상태는 슬로우
+    return s;
+  }
+  function shake() {
+    let amp = 0;
+    for (const fx of list) {
+      const t = fx.t;
+      if (t > .6 && t < BURST) amp = Math.max(amp, (1 + 7 * easeIn((t - .6) / (BURST - .6))) * fx.S);
+      if (t > BURST) amp = Math.max(amp, Math.max(0, 1 - (t - BURST) / .6) * 30 * fx.S);
+    }
+    return [(Math.random() - .5) * amp, (Math.random() - .5) * amp];
+  }
+  function clear() { list.length = 0; }
+  function active() { return list.length; }
+
+  function fullFill(ctx, style, op) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = op; ctx.fillStyle = style;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
+  }
+  function bolt(ctx, x0, y0, ang, len, seed, w, col) {
+    let x = x0, y = y0, a = ang, s = seed;
+    const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { a += (rnd() - .5) * 1.5; x += Math.cos(a) * len / 6; y += Math.sin(a) * len / 6; ctx.lineTo(x, y); }
+    ctx.stroke();
+  }
+
+  /* 중력 렌즈: 핵 주위의 화면을 안쪽으로 당겨 그림 (동심 링을 안쪽으로 조금씩 축소 복사) */
+  function lens(ctx, x, y, r, strength) {
+    const cv = ctx.canvas, m = ctx.getTransform();
+    const sx = m.a * x + m.c * y + m.e, sy = m.b * x + m.d * y + m.f, k = Math.hypot(m.a, m.b);
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over';
+    const N = 6;
+    for (let i = N; i >= 1; i--) {
+      const rr = r * k * i / N, sc = 1 + strength * (1 - i / N) * .9;
+      ctx.save(); ctx.beginPath(); ctx.arc(sx, sy, rr, 0, 7); ctx.clip();
+      ctx.translate(sx, sy); ctx.scale(sc, sc); ctx.translate(-sx, -sy);
+      ctx.drawImage(cv, 0, 0); ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawOne(ctx, fx) {
+    const t = fx.t, S = fx.S, x = fx.x, y = fx.y, R0 = fx.R0 * S;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    const comp = easeIn(t / COMP);                                   // 압축 진행 0→1
+    const coreR = (R0 * .18) * (1 - comp) + 16 * S;                   // 핵 반지름 (압축 끝 16px)
+    const crit = t > COMP ? clamp((t - COMP) / (BURST - COMP)) : 0;   // 임계 상태 진행
+    const burstAge = t - BURST;
+
+    /* 화면 암전: 압축될수록 세상이 어두워짐 */
+    if (fx.screen) {
+      if (t < BURST) fullFill(ctx, `rgba(0,0,4,${.55 * comp})`, 'source-over');
+      else if (burstAge < .9) fullFill(ctx, `rgba(0,0,4,${.55 * (1 - burstAge / .9)})`, 'source-over');
+    }
+
+    /* ① 압축 단계 */
+    if (t < BURST) {
+      // 중력 렌즈 (압축 후반부터)
+      if (comp > .35) lens(ctx, x, y, (90 + 120 * comp) * S, .25 * clamp((comp - .35) / .65) + crit * .25);
+
+      // 큰 원 경계 — 압축되며 수축하는 고리
+      const ringR = R0 * (1 - comp * .93) + coreR;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = `rgba(140,90,255,${.25 + comp * .4})`; ctx.lineWidth = (2 + comp * 6) * S;
+      ctx.beginPath(); ctx.arc(x, y, ringR, 0, 7); ctx.stroke();
+      ctx.strokeStyle = `rgba(230,220,255,${.15 + comp * .5})`; ctx.lineWidth = 1 * S;
+      ctx.beginPath(); ctx.arc(x, y, ringR, 0, 7); ctx.stroke();
+
+      // 흘러드는 가닥 (나선)
+      for (const s of fx.streams) {
+        const p = clamp((t - s.t0) / .8); if (p <= 0) continue;
+        ctx.strokeStyle = `rgba(60,20,120,${.55 * Math.sin(p * Math.PI)})`; ctx.lineWidth = s.w * S;
+        ctx.beginPath();
+        const N = 26;
+        for (let k = 0; k <= N; k++) {
+          const u = k / N, r = R0 * (1 - u * .96) * (1 - comp * .9) + coreR * u, a = s.a + s.curl * u * u + comp * 2;
+          const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * .72;
+          if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.globalCompositeOperation = 'source-over'; ctx.stroke();
+        ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(170,120,255,${.35 * Math.sin(p * Math.PI)})`; ctx.lineWidth = s.w * S * .3; ctx.stroke();
+      }
+
+      // 암흑물질 덩어리 — 둘레에서 나선을 그리며 핵으로
+      ctx.globalCompositeOperation = 'source-over';
+      for (const m of fx.motes) {
+        const p = clamp((t - m.t0) / m.dur); if (p <= 0) continue;
+        const q = easeIn(p), r = m.r0 * S * (1 - q) + coreR * q * .6, a = m.a + m.spin * q * 2.2;
+        const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r * .72, sz = m.s * S * (1 - q * .55);
+        const g = ctx.createRadialGradient(px, py, 0, px, py, sz * 2);
+        g.addColorStop(0, `rgba(4,0,12,${.95})`); g.addColorStop(.5, `hsla(${m.hue},70%,20%,.8)`); g.addColorStop(1, `hsla(${m.hue},80%,40%,0)`);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, sz * 2, 0, 7); ctx.fill();
+        // 꼬리
+        const ta = a - m.spin * .12, tr = r + 18 * S;
+        ctx.strokeStyle = `hsla(${m.hue},80%,55%,${.35 * (1 - q)})`; ctx.lineWidth = 1 * S;
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x + Math.cos(ta) * tr, y + Math.sin(ta) * tr * .72); ctx.stroke();
+      }
+
+      // 핵: 검은 구체 + 보랏빛 코로나, 임계 상태에서 떨림·맥동
+      const pulse = 1 + crit * Math.sin(t * 90) * .08 + crit * .15;
+      const cr = coreR * pulse;
+      ctx.globalCompositeOperation = 'lighter';
+      const cg = ctx.createRadialGradient(x, y, cr * .6, x, y, cr * (2.4 + comp * 1.4 + crit * 2));
+      cg.addColorStop(0, `rgba(150,80,255,${.5 + crit * .5})`); cg.addColorStop(.35, `rgba(90,30,200,${.3 + crit * .3})`); cg.addColorStop(1, 'rgba(40,0,120,0)');
+      ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(x, y, cr * 5, 0, 7); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      const bg = ctx.createRadialGradient(x, y, 0, x, y, cr);
+      bg.addColorStop(0, 'rgba(0,0,0,1)'); bg.addColorStop(.8, 'rgba(2,0,8,1)'); bg.addColorStop(1, 'rgba(20,0,40,.9)');
+      ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x, y, cr, 0, 7); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = `rgba(230,215,255,${.5 + crit * .5})`; ctx.lineWidth = (1 + crit * 2) * S;
+      ctx.beginPath(); ctx.arc(x, y, cr, 0, 7); ctx.stroke();
+
+      // 임계 상태: 검은 번개 + 밖으로 새는 흰 균열선
+      if (crit > 0) {
+        for (const b of fx.bolts) {
+          const age = t - b.t0; if (age < 0 || age > b.life) continue;
+          const seed = b.seed + (t * 60 | 0);
+          bolt(ctx, x + Math.cos(b.a) * cr, y + Math.sin(b.a) * cr, b.a, b.len * S, seed, 4 * S, 'rgba(90,40,200,.6)');
+          bolt(ctx, x + Math.cos(b.a) * cr, y + Math.sin(b.a) * cr, b.a, b.len * S, seed, 1.3 * S, 'rgba(240,230,255,1)');
+        }
+        // 수축 링 (안으로 빨려드는 충격파)
+        const q = ((t - COMP) * 4) % 1, rr = (260 * (1 - q) + 20) * S;
+        ctx.strokeStyle = `rgba(200,180,255,${q * .5})`; ctx.lineWidth = 2 * S;
+        ctx.beginPath(); ctx.ellipse(x, y, rr, rr * .72, 0, 0, 7); ctx.stroke();
+      }
+    }
+
+    /* ② 폭발 */
+    if (t >= BURST) {
+      const age = burstAge;
+      // 검은 구체의 급팽창 (0.18초 만에 화면을 삼키고 사라짐)
+      {
+        const p = clamp(age / .55), r = 16 * S + R0 * 2.6 * easeOutQ(p), al = p < .3 ? 1 : 1 - (p - .3) / .7;
+        ctx.globalCompositeOperation = 'source-over';
+        const g = ctx.createRadialGradient(x, y, r * .55, x, y, r);
+        g.addColorStop(0, `rgba(0,0,0,${.98 * al})`); g.addColorStop(.75, `rgba(6,0,18,${.9 * al})`); g.addColorStop(1, `rgba(40,0,90,0)`);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+        // 팽창 구체의 흰 림
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = `rgba(245,235,255,${al * .9})`; ctx.lineWidth = (10 * (1 - p) + 1) * S;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+      }
+      // 충격파 (납작한 타원 2겹, 지면을 따라)
+      for (const [delay, k] of [[0, 1], [.08, .7]]) {
+        const q = (age - delay) / .7; if (q < 0 || q > 1) continue;
+        const r = 30 * S + R0 * 3.2 * easeOut(q);
+        ctx.strokeStyle = `rgba(190,160,255,${(1 - q) * .55})`; ctx.lineWidth = (26 * (1 - q) + 1) * S * k;
+        ctx.beginPath(); ctx.ellipse(x, y, r * k, r * k * .4, 0, 0, 7); ctx.stroke();
+      }
+      // 방사선: 어두운 방사선 + 흰 심
+      for (const r of fx.rays) {
+        const q = (t - r.t0) / r.life; if (q < 0 || q > 1) continue;
+        const L = r.L * S * easeOutQ(q / .25), w = r.w * S * (1 - q), al = Math.pow(1 - q, 1.2);
+        const ca = Math.cos(r.a), sa = Math.sin(r.a), px = -sa, py = ca, r0 = 30 * S;
+        ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = `rgba(10,0,30,${al * .7})`; ctx.beginPath();
+        ctx.moveTo(x + ca * r0 + px * w, y + sa * r0 + py * w); ctx.lineTo(x + ca * (r0 + L), y + sa * (r0 + L)); ctx.lineTo(x + ca * r0 - px * w, y + sa * r0 - py * w); ctx.closePath(); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(220,200,255,${al * .8})`; ctx.lineWidth = Math.max(.5, w * .25);
+        ctx.beginPath(); ctx.moveTo(x + ca * r0, y + sa * r0); ctx.lineTo(x + ca * (r0 + L), y + sa * (r0 + L)); ctx.stroke();
+      }
+      // 코어 플래시 (보라→흰)
+      { const q = age / .5; if (q < 1) { const r = (80 + 400 * easeOut(q)) * S, al = Math.pow(1 - q, 1.6); const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(255,250,255,${al})`); g.addColorStop(.3, `rgba(200,150,255,${al * .7})`); g.addColorStop(1, 'rgba(90,0,200,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); } }
+      // 파편
+      for (const d of fx.debris) {
+        const a2 = t - d.t0; if (a2 < 0 || a2 > d.life) continue;
+        const k = 2.3, v = d.v * S, ex = Math.exp(-k * a2), dist = v * (1 - ex) / k;
+        const px = x + Math.cos(d.a) * dist, py = y + Math.sin(d.a) * dist * .8 + 260 * S * a2 * a2, al = 1 - a2 / d.life, sz = d.s * S;
+        if (d.dark) {
+          ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = `rgba(6,0,16,${al * .95})`;
+          ctx.save(); ctx.translate(px, py); ctx.rotate(a2 * d.spin); ctx.fillRect(-sz, -sz * .6, sz * 2, sz * 1.2); ctx.restore();
+          ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(170,120,255,${al * .5})`; ctx.lineWidth = .8 * S;
+          ctx.save(); ctx.translate(px, py); ctx.rotate(a2 * d.spin); ctx.strokeRect(-sz, -sz * .6, sz * 2, sz * 1.2); ctx.restore();
+        } else {
+          const vx = Math.cos(d.a) * v * ex, vy = Math.sin(d.a) * v * ex * .8 + 520 * S * a2;
+          ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(210,180,255,${al})`; ctx.lineWidth = sz * .5;
+          ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - vx * .03, py - vy * .03); ctx.stroke();
+        }
+      }
+      // 암흑 연기
+      ctx.globalCompositeOperation = 'source-over';
+      for (const m of fx.smoke) {
+        const p = (t - m.t0) / m.life; if (p < 0 || p > 1) continue;
+        const d = (m.d * easeOut(p)) * S, px = x + Math.cos(m.a) * d, py = y + Math.sin(m.a) * d * .6 - p * m.rise * S, r = m.r * S * (.5 + p);
+        const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+        g.addColorStop(0, `rgba(6,2,14,${.5 * Math.sin(p * Math.PI)})`); g.addColorStop(.6, `rgba(22,8,40,${.22 * Math.sin(p * Math.PI)})`); g.addColorStop(1, 'rgba(22,8,40,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill();
+      }
+      // 지면 흔적 (검게 그을린 타원)
+      { const q = age / 1.5; if (q < 1) { const r = R0 * .9 * easeOut(age / .4), al = .5 * (1 - q); const g = ctx.createRadialGradient(x, y + 10 * S, 0, x, y + 10 * S, r); g.addColorStop(0, `rgba(0,0,0,${al})`); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y + 10 * S, r, r * .4, 0, 0, 7); ctx.fill(); } }
+    }
+    ctx.restore();
+
+    /* 화면 연출: 폭발 순간 완전 암전 → 반전 → 보랏빛 플래시, 색수차 */
+    if (fx.screen) {
+      if (t >= BURST && t < BURST + .05) fullFill(ctx, 'rgba(0,0,0,1)', 'source-over');
+      else if (t >= BURST + .05 && t < BURST + .085) fullFill(ctx, 'rgba(240,230,255,.95)', 'lighter');
+      else if (t >= BURST + .085 && t < BURST + .4) fullFill(ctx, `rgba(225,205,255,${Math.pow(1 - (t - BURST - .085) / .315, 2) * .85})`, 'lighter');
+      const ab = (t > COMP && t < BURST) ? 6 * S * crit : (t > BURST && t < BURST + 1) ? 12 * S * (1 - (t - BURST)) : 0;
+      if (ab > 0) {
+        const cv = ctx.canvas, k = cv.clientWidth ? cv.width / cv.clientWidth : 1;
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .16;
+        ctx.drawImage(cv, -ab * k, 0); ctx.drawImage(cv, ab * k, 0); ctx.restore();
+      }
+    }
+  }
+
+  function draw(ctx) { for (const fx of list) drawOne(ctx, fx); }
+
+  global.DarkBurst = { spawn, update, draw, shake, timeScale, clear, active, DURATION: DUR, COMPRESS_TIME: COMP, BURST_TIME: BURST };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* =========================================================
+   DarkStorm VFX v1 — 암흑 분출 폭풍 (캔버스 2D, 배경 투명)
+   ---------------------------------------------------------
+   대상 발밑의 땅이 쩌저적 갈라지고, 갈라진 틈에서 검은 암흑물질이
+   피어올라 회전하는 흑백의 폭풍이 되어 대상을 연속 타격하는 스킬. 시전자 모션 없음.
+   색은 검정과 흰색만 사용.
+   사용법
+     1) 이 파일 내용을 게임 HTML의 <script> 안에 그대로 붙여넣기
+     2) 스킬 사용 시:
+          DarkStorm.spawn(x, y, {            // x,y = 대상 발밑(지면) 위치
+            scale: 1,          // 크기 배율 (화면 짧은 변 700px 기준 1)
+            height: 400,       // 폭풍 높이 (scale 배율 전)
+            screen: true,      // 화면 암전·플래시·색수차 연출
+            onCrack(fx){},     // 땅이 갈라지기 시작 (0.05초)
+            onErupt(fx){},     // 틈에서 폭풍이 피어오르기 시작 (0.45초) — 첫 타격
+            onTick(fx, i){},   // 폭풍 연속 타격 (0.75초부터 0.2초 간격, i = 1,2,3…)
+            onEnd(fx){}        // 종료 (3.0초)
+          });
+     3) 게임 루프 매 프레임:
+          const ts = DarkStorm.timeScale();       // 히트스톱 0~1 (선택)
+          const [sx, sy] = DarkStorm.shake();     // 카메라 흔들림 (선택)
+          ctx.save(); ctx.translate(sx, sy);
+          ...게임 화면 그리기...
+          DarkStorm.draw(ctx);                    // 대상 스프라이트는 draw 전에 그리면 폭풍에 감싸임
+          ctx.restore();
+          DarkStorm.update(dt);
+   타이밍(초): 0.05~0.45 균열 전파 (자갈 튐, 틈새 빛) / 0.45~0.9 틈에서 암흑이 피어올라 폭풍으로 자람
+               0.9~2.1 검은 폭풍 회전 (연속 타격) / 2.1~3.0 흩어지며 소멸
+   ========================================================= */
+(function (global) {
+  const DUR = 3.0, CRACK = 0.05, ERUPT = 0.45, STORM = 0.45, FADE = 2.1, TICK0 = 0.8, TICK = 0.2;
+  const R = (a, b) => a + Math.random() * (b - a);
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const easeOut = x => 1 - Math.pow(1 - clamp(x), 3);
+  const easeOutQ = x => 1 - Math.pow(1 - clamp(x), 5);
+  const easeIn = x => Math.pow(clamp(x), 2);
+  const list = [];
+
+  function spawn(x, y, o = {}) {
+    const S = o.scale ?? 1, Hh = o.height ?? 400;
+    /* 지면 균열: 중심에서 바깥으로 뻗는 지그재그, 가지 포함 */
+    const cracks = [];
+    for (let i = 0; i < 9; i++) {
+      const a = i / 9 * 6.283 + R(-.25, .25), len = R(120, 260);
+      const pts = [[0, 0]]; let px = 0, py = 0, d = a;
+      const n = 5 + (Math.random() * 3 | 0);
+      for (let k = 0; k < n; k++) { d += R(-.5, .5); px += Math.cos(d) * len / n; py += Math.sin(d) * len / n * .42; pts.push([px, py]); }
+      const branch = []; if (Math.random() < .7) { const s = 2 + (Math.random() * (n - 2) | 0); let bx = pts[s][0], by = pts[s][1], bd = d + (Math.random() < .5 ? 1 : -1) * R(.6, 1.2); branch.push([bx, by]); for (let k = 0; k < 3; k++) { bd += R(-.4, .4); bx += Math.cos(bd) * 30; by += Math.sin(bd) * 30 * .42; branch.push([bx, by]); } }
+      cracks.push({ pts, branch, t0: CRACK + R(0, .12), dur: R(.22, .32), w: R(1.5, 3.5) });
+    }
+    /* 자갈 */
+    const pebbles = [];
+    for (let i = 0; i < 60; i++) { const a = R(0, 6.283), d = R(10, 200); pebbles.push({ x: Math.cos(a) * d, y: Math.sin(a) * d * .42, t0: CRACK + R(.05, .35), vy: R(-120, -40), life: R(.3, .5), s: R(1.5, 3.5) }); }
+    /* 틈새에서 피어오르는 암흑 연기 — 균열 선 위의 점에서 출발 */
+    const wisps = [];
+    for (let i = 0; i < 70; i++) {
+      const c = cracks[Math.random() * cracks.length | 0], k = 1 + (Math.random() * (c.pts.length - 1) | 0);
+      wisps.push({ x: c.pts[k][0], y: c.pts[k][1], t0: ERUPT + R(0, .35), life: R(.5, .9), r: R(12, 30), vy: R(-180, -90), vx: R(-20, 20), curl: R(-3, 3) });
+    }
+    /* 분출 지면 파편 */
+    const chunks = [];
+    for (let i = 0; i < 40; i++) { const a = R(-2.6, -.5); chunks.push({ a, v: R(350, 900), t0: ERUPT + R(0, .06), life: R(.6, 1.1), s: R(3, 9), spin: R(-9, 9), ox: R(-40, 40) }); }
+    /* 폭풍 띠: 기둥을 감고 도는 검은 줄기 */
+    const bands = [];
+    for (let i = 0; i < 54; i++) bands.push({ h0: R(0, .25), th: R(0, 6.283), span: R(.9, 2.3), w: R(12, 40), speed: R(5, 8), rise: R(.25, .5), t0: STORM + R(0, .35), tone: Math.random() });
+    /* 폭풍 속 파편 */
+    const orbiters = [];
+    for (let i = 0; i < 40; i++) orbiters.push({ h: R(.05, .95), th: R(0, 6.283), rad: R(.8, 1.4), speed: R(6, 10), s: R(2, 6), t0: STORM + R(.2, .7), spin: R(-10, 10) });
+    /* 번개 */
+    const bolts = [];
+    for (let i = 0; i < 16; i++) bolts.push({ t0: STORM + .1 + R(0, 1.3), h: R(.2, .9), side: Math.random() < .5 ? -1 : 1, len: R(60, 160), life: R(.05, .09), seed: Math.random() * 1000 });
+    /* 소멸 연기 */
+    const smoke = [];
+    for (let i = 0; i < 26; i++) smoke.push({ h: R(0, 1), a: R(0, 6.283), d: R(20, 140), r: R(40, 110), t0: FADE + R(0, .3), life: R(.6, .9), vx: R(-40, 40) });
+
+    const fx = { x, y, S, H: Hh, cracks, pebbles, wisps, chunks, bands, orbiters, bolts, smoke, t: 0, ticks: 0, cracked: false, erupted: false,
+      screen: o.screen !== false, onCrack: o.onCrack, onErupt: o.onErupt, onTick: o.onTick, onEnd: o.onEnd };
+    list.push(fx);
+    return fx;
+  }
+
+  function update(dt) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i]; fx.t += dt;
+      if (!fx.cracked && fx.t >= CRACK) { fx.cracked = true; fx.onCrack && fx.onCrack(fx); }
+      if (!fx.erupted && fx.t >= ERUPT) { fx.erupted = true; fx.onErupt && fx.onErupt(fx); }
+      while (fx.t >= TICK0 + fx.ticks * TICK && TICK0 + fx.ticks * TICK < FADE) { fx.ticks++; fx.onTick && fx.onTick(fx, fx.ticks); }
+      if (fx.t > DUR) { list.splice(i, 1); fx.onEnd && fx.onEnd(fx); }
+    }
+  }
+  function timeScale() {
+    let s = 1;
+    for (const fx of list) { if (fx.t >= ERUPT && fx.t < ERUPT + .08) s = 0; }
+    return s;
+  }
+  function shake() {
+    let amp = 0;
+    for (const fx of list) {
+      const t = fx.t;
+      if (t > CRACK && t < ERUPT) amp = Math.max(amp, (1 + 4 * easeIn((t - CRACK) / (ERUPT - CRACK))) * fx.S);
+      if (t > ERUPT) amp = Math.max(amp, Math.max(0, 1 - (t - ERUPT) / .4) * 22 * fx.S);
+      if (t > STORM && t < FADE) amp = Math.max(amp, 3 * fx.S);
+    }
+    return [(Math.random() - .5) * amp, (Math.random() - .5) * amp];
+  }
+  function clear() { list.length = 0; }
+  function active() { return list.length; }
+
+  function fullFill(ctx, style, op) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = op; ctx.fillStyle = style;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
+  }
+  function bolt(ctx, x0, y0, ang, len, seed, w, col) {
+    let x = x0, y = y0, a = ang, s = seed;
+    const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { a += (rnd() - .5) * 1.5; x += Math.cos(a) * len / 6; y += Math.sin(a) * len / 6; ctx.lineTo(x, y); }
+    ctx.stroke();
+  }
+  /* 폭풍 반지름: 아래 좁고 위 넓은 깔때기 */
+  const stormR = (fx, h) => (26 + 110 * Math.pow(h, 1.3)) * fx.S;
+
+  function drawOne(ctx, fx) {
+    const t = fx.t, S = fx.S, x = fx.x, y = fx.y, H = fx.H * S;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    const stormIn = clamp((t - STORM) / .45);                     // 폭풍 형성 (지면에서 위로 자람)
+    const stormOut = t > FADE ? clamp((t - FADE) / .6) : 0;        // 소멸
+    const storm = stormIn * (1 - stormOut);
+
+    /* 화면 암전 */
+    if (fx.screen) {
+      const p = t < ERUPT ? .25 * clamp((t - CRACK) / (ERUPT - CRACK)) : .4 * storm + .25 * clamp(1 - (t - ERUPT) / .3) * (1 - storm);
+      if (p > 0) fullFill(ctx, `rgba(0,0,0,${p})`, 'source-over');
+    }
+
+    /* ① 지면 균열 + 틈새 빛 + 자갈 */
+    {
+      const crackAl = t < FADE + .5 ? 1 : clamp(1 - (t - FADE - .5) / .4);
+      const glow = t < ERUPT ? clamp((t - CRACK) / (ERUPT - CRACK)) : 1;
+      const drawCrack = (pts, prog, lw, col) => {
+        ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath();
+        const n = pts.length - 1, reach = prog * n;
+        for (let k = 0; k <= n; k++) {
+          if (k > reach + 1) break;
+          const f = Math.min(1, reach - (k - 1)), a = pts[Math.max(0, k - 1)], b = pts[k];
+          const px = a[0] + (b[0] - a[0]) * (k === 0 ? 1 : f), py = a[1] + (b[1] - a[1]) * (k === 0 ? 1 : f);
+          if (k === 0) ctx.moveTo(x + px * S, y + py * S); else ctx.lineTo(x + px * S, y + py * S);
+        }
+        ctx.stroke();
+      };
+      for (const c of fx.cracks) {
+        const prog = clamp((t - c.t0) / c.dur); if (prog <= 0) continue;
+        // 단계적으로 "쩍" 하고 뻗도록 계단화
+        const step = Math.floor(prog * (c.pts.length - 1) * 1.0 + .999) / (c.pts.length - 1);
+        ctx.globalCompositeOperation = 'lighter';
+        drawCrack(c.pts, step, c.w * 4 * S, `rgba(255,255,255,${.22 * glow * crackAl})`);
+        if (c.branch.length) drawCrack(c.branch, clamp((prog - .5) * 2), c.w * 2.5 * S, `rgba(255,255,255,${.18 * glow * crackAl})`);
+        ctx.globalCompositeOperation = 'source-over';
+        drawCrack(c.pts, step, c.w * S, `rgba(0,0,0,${.95 * crackAl})`);
+        if (c.branch.length) drawCrack(c.branch, clamp((prog - .5) * 2), c.w * .6 * S, `rgba(0,0,0,${.9 * crackAl})`);
+        ctx.globalCompositeOperation = 'lighter';
+        drawCrack(c.pts, step, c.w * .35 * S, `rgba(255,255,255,${.85 * glow * crackAl})`);
+      }
+      // 중심 틈의 빛
+      if (t > CRACK) {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, (40 + 80 * glow) * S);
+        g.addColorStop(0, `rgba(255,255,255,${.3 * glow * crackAl})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, 140 * S, 56 * S, 0, 0, 7); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      for (const p of fx.pebbles) {
+        const age = t - p.t0; if (age < 0 || age > p.life) continue;
+        const py = y + p.y * S + (p.vy * age + 400 * age * age) * S;
+        ctx.fillStyle = `rgba(0,0,0,${1 - age / p.life})`; ctx.fillRect(x + p.x * S, py, p.s * S, p.s * S);
+      }
+    }
+
+    /* ② 분출 첨탑 (검은 암흑물질이 솟구침) — 폭풍이 형성되면 폭풍 속으로 녹아듦 */
+    if (t >= ERUPT) {
+      // 틈새 연기: 균열 위에서 검은 덩어리가 피어오르며 소용돌이로 빨려듦
+      for (const w of fx.wisps) {
+        const age = t - w.t0; if (age < 0 || age > w.life) continue;
+        const p = age / w.life, px = x + w.x * S + (w.vx * age + Math.sin(age * w.curl * 2) * 10) * S, py = y + w.y * S + w.vy * age * S;
+        const r = w.r * S * (.6 + p), al = Math.sin(p * Math.PI) * .9;
+        ctx.globalCompositeOperation = 'source-over';
+        const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+        g.addColorStop(0, `rgba(0,0,0,${al})`); g.addColorStop(.7, `rgba(4,4,6,${al * .5})`); g.addColorStop(1, 'rgba(4,4,6,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill();
+      }
+      // 분출 지면 파편
+      for (const c of fx.chunks) {
+        const age = t - c.t0; if (age < 0 || age > c.life) continue;
+        const v = c.v * S, px = x + c.ox * S + Math.cos(c.a) * v * age, py = y + Math.sin(c.a) * v * age + 900 * S * age * age, al = 1 - age / c.life, sz = c.s * S;
+        ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = `rgba(0,0,0,${al})`;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(age * c.spin); ctx.fillRect(-sz, -sz * .7, sz * 2, sz * 1.4); ctx.restore();
+      }
+      // 분출 충격파 (지면 타원)
+      { const q = (t - ERUPT) / .5; if (q > 0 && q < 1) { const r = (20 + 320 * easeOut(q)) * S; ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = `rgba(255,255,255,${(1 - q) * .6})`; ctx.lineWidth = (16 * (1 - q) + 1) * S; ctx.beginPath(); ctx.ellipse(x, y, r, r * .4, 0, 0, 7); ctx.stroke(); } }
+      // 분출 플래시 기둥
+      { const q = (t - ERUPT) / .3; if (q > 0 && q < 1) { ctx.globalCompositeOperation = 'lighter'; const g = ctx.createLinearGradient(x, y, x, y - H * 1.2); g.addColorStop(0, `rgba(255,255,255,${(1 - q) * .5})`); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - (60 - 50 * q) * S, y - H * 1.2, (120 - 100 * q) * S, H * 1.2); } }
+    }
+
+    /* ③ 검은 폭풍 */
+    if (storm > 0) {
+      const Hc = H * easeOut(stormIn) * (1 - stormOut * .3);   // 현재 폭풍 높이
+      const col = (h) => stormR(fx, h) * storm;
+      // 기둥 코어 (반투명 어둠)
+      ctx.globalCompositeOperation = 'source-over';
+      { const g = ctx.createLinearGradient(x, y, x, y - Hc); g.addColorStop(0, `rgba(0,0,0,${.88 * storm})`); g.addColorStop(.7, `rgba(3,3,4,${.75 * storm})`); g.addColorStop(1, 'rgba(6,6,8,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - col(0), y);
+        for (let k = 1; k <= 10; k++) { const h = k / 10; ctx.lineTo(x - col(h), y - Hc * h); }
+        for (let k = 10; k >= 0; k--) { const h = k / 10; ctx.lineTo(x + col(h), y - Hc * h); }
+        ctx.closePath(); ctx.fill(); }
+
+      // 띠: 뒤쪽 → 앞쪽 순서로 (깊이 정렬)
+      const items = [];
+      for (const b of fx.bands) {
+        if (t < b.t0) continue;
+        const age = t - b.t0, h0 = (b.h0 + age * b.rise) % 1;
+        const th = b.th + age * b.speed;
+        items.push({ kind: 'band', b, h0, th, depth: Math.sin(th + b.span / 2) });
+      }
+      for (const o of fx.orbiters) {
+        if (t < o.t0) continue;
+        const age = t - o.t0, th = o.th + age * o.speed;
+        items.push({ kind: 'orb', o, th, depth: Math.sin(th) });
+      }
+      items.sort((a, b) => a.depth - b.depth);
+      for (const it of items) {
+        if (it.kind === 'band') {
+          const b = it.b, front = (it.depth + 1) / 2;         // 0 뒤, 1 앞
+          const pts = [];
+          const N = 14;
+          for (let k = 0; k <= N; k++) {
+            const u = k / N, th = it.th + b.span * u, h = clamp(it.h0 + u * .12 * Math.sign(b.rise));
+            const r = col(h) * (1 + Math.sin(th * 3 + t * 7) * .05);
+            pts.push([x + Math.cos(th) * r, y - Hc * h + Math.sin(th) * r * .18]);
+          }
+          const w = b.w * S * storm * (.6 + front * .6);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.strokeStyle = `rgba(0,0,0,${(.35 + front * .6) * storm})`; ctx.lineWidth = w;
+          ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.strokeStyle = `rgba(255,255,255,${(b.tone < .5 ? .1 + front * .35 : .04 + front * .12) * storm})`; ctx.lineWidth = w * (b.tone < .5 ? .12 : .3);
+          ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke();
+        } else {
+          const o = it.o, front = (it.depth + 1) / 2, r = col(o.h) * o.rad;
+          const px = x + Math.cos(it.th) * r, py = y - Hc * o.h + Math.sin(it.th) * r * .18, sz = o.s * S * (.5 + front * .7) * storm;
+          ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = `rgba(0,0,0,${(.5 + front * .5) * storm})`;
+          ctx.save(); ctx.translate(px, py); ctx.rotate(t * o.spin); ctx.fillRect(-sz, -sz * .6, sz * 2, sz * 1.2); ctx.restore();
+        }
+      }
+
+      // 폭풍 속 번개
+      ctx.globalCompositeOperation = 'lighter';
+      for (const b of fx.bolts) {
+        const age = t - b.t0; if (age < 0 || age > b.life) continue;
+        const sx = x + b.side * col(b.h) * .6, sy = y - Hc * b.h, seed = b.seed + (t * 60 | 0);
+        bolt(ctx, sx, sy, b.side > 0 ? R(-.4, .4) : Math.PI + R(-.4, .4), b.len * S, seed, 4 * S, `rgba(255,255,255,${.25 * storm})`);
+        bolt(ctx, sx, sy, b.side > 0 ? R(-.4, .4) : Math.PI + R(-.4, .4), b.len * S, seed, 1.3 * S, `rgba(255,255,255,${storm})`);
+      }
+      // 타격 순간 플래시 (onTick 과 동기)
+      { const k = (t - TICK0) / TICK; if (t >= TICK0 && t < FADE) { const f = 1 - (k - Math.floor(k)); const g = ctx.createRadialGradient(x, y - Hc * .45, 0, x, y - Hc * .45, 120 * S); g.addColorStop(0, `rgba(255,255,255,${.35 * Math.pow(f, 3) * storm})`); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - Hc * .45, 120 * S, 0, 7); ctx.fill(); } }
+      // 밑동 먼지 고리
+      ctx.globalCompositeOperation = 'source-over';
+      { const g = ctx.createRadialGradient(x, y, col(0) * .5, x, y, col(0) * 2.6); g.addColorStop(0, `rgba(0,0,0,${.55 * storm})`); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, col(0) * 2.6, col(0) * 1.1, 0, 0, 7); ctx.fill(); }
+    }
+
+    /* ④ 소멸 연기 */
+    if (t >= FADE) {
+      ctx.globalCompositeOperation = 'source-over';
+      for (const m of fx.smoke) {
+        const p = (t - m.t0) / m.life; if (p < 0 || p > 1) continue;
+        const r0 = stormR(fx, m.h), px = x + Math.cos(m.a) * (r0 + m.d * S * easeOut(p)) + m.vx * p * S, py = y - H * .7 * m.h - p * 60 * S, r = m.r * S * (.5 + p);
+        const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+        g.addColorStop(0, `rgba(0,0,0,${.55 * Math.sin(p * Math.PI)})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill();
+      }
+    }
+    ctx.restore();
+
+    /* 화면 연출 */
+    if (fx.screen) {
+      if (t >= ERUPT && t < ERUPT + .06) fullFill(ctx, `rgba(255,255,255,${Math.pow(1 - (t - ERUPT) / .06, 2) * .5})`, 'lighter');
+      const ab = (t > ERUPT && t < ERUPT + .5) ? 8 * S * (1 - (t - ERUPT) / .5) : storm * 2.5 * S;
+      if (ab > .3) {
+        const cv = ctx.canvas, k = cv.clientWidth ? cv.width / cv.clientWidth : 1;
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .14;
+        ctx.drawImage(cv, -ab * k, 0); ctx.drawImage(cv, ab * k, 0); ctx.restore();
+      }
+    }
+  }
+
+  function draw(ctx) { for (const fx of list) drawOne(ctx, fx); }
+
+  global.DarkStorm = { spawn, update, draw, shake, timeScale, clear, active, DURATION: DUR, ERUPT_TIME: ERUPT, TICK_START: TICK0, TICK_INTERVAL: TICK, FADE_TIME: FADE };
+})(typeof window !== 'undefined' ? window : globalThis);
+
 /* =====================================================================
  * 05. 혈인일섬  (bloodBrush)  — 스킬 VFX (아군 시전용)
  * ---------------------------------------------------------------------
@@ -5292,12 +5892,17 @@ const YURIA_BASE={name:'쿠죠 유리아',els:['fire','dark'],lv:30,hp:400,atk:1
   {name:'횡섬',el:'fire',pow:90,hits:2,acc:100,pp:15,fx:'skill',sk:'horizontalSweep',gim:'atk+',gt:'공격 +1',desc:'2연격 (총 위력 90) · 자신의 공격 +1'},
   {name:'반월참',el:'dark',pow:95,hits:2,acc:95,pp:12,fx:'skill',sk:'crescentMoon',gim:'crit10',gt:'치명타 +10%',desc:'2연격 (총 위력 95) · 적의 치명타 저항을 꿰뚫어 이 공격의 치명타 확률 +10%'}],
   ult:{name:'혈인 일섬',el:'dark',els:['fire','dark'],pow:165,acc:100,hits:4,sk:'bloodBrush',gim:'bleed',gt:'불·어둠 혼합 · 출혈 2턴'},domain:{name:'혈야의 영지',turns:3,fx:'ultfin',fxName:'궁극기 마무리',fxDesc:'영역이 닫히는 순간 혈인 일섬이 자동으로 발동한다'}};
+const ONE_BASE={name:'온리 원',els:['dark','water'],lv:30,hp:420,atk:92,def:84,spd:96,crit:5,cdmg:150,moves:[
+  {name:'다크매터',el:'dark',els:['dark','water'],pow:70,acc:100,pp:20,fx:'darkburst',gim:'shield',gt:'아군 전체 실드',desc:'암흑물질을 압축해 폭발시킨다 · 어둠·물 혼합 · 아군 전체에게 다음 피격 50% 감경 실드'}],
+  ult:{name:'다크매터 폭발',el:'dark',els:['dark','water'],pow:150,acc:100,gim:'def-',gt:'어둠·물 혼합 · 적 방어 -2'},domain:{name:'여왕의 다크매터',turns:3,fx:'heal',fxName:'여왕의 가호',fxDesc:'3턴 동안 매 턴 아군 회복 · 영역이 닫힐 때 아군이 준 피해의 10%를 적에게 되돌린다'}};
 const DOM_FX={inf:{n:'특수 스킬 무한 사용'},ultfin:{n:'궁극기 마무리'},buff:{n:'아군 강화'},heal:{n:'아군 회복·실드'}};
 const HEROES={
   rod:{id:'rod',name:'로스바이세',en:'Rossweisse',sig:'黒月の剣客',base:HERO_BASE,els:HERO_BASE.els,img:'img/char_hd.webp',face:'img/face.webp',back:'img/back.webp',back2:'img/back2.webp',cutin:'img/cutin.webp',nodeArt:'img/node_art.webp',vid:'ult.mp4',
     domainTint:'moon',cutinOpt:{},awakeMsg:'흑월 각성 — 로스바이세의 모습이 변했다',domMsg:'검은 손들이 전장을 감쌌다.'},
   yuria:{id:'yuria',name:'쿠죠 유리아',en:'Kujo Yuria',sig:'紅蓮の剣鬼',base:YURIA_BASE,els:YURIA_BASE.els,img:'img/yuria_char.webp',face:'img/yuria_face.webp',back:'img/yuria_back.webp',back2:null,cutin:'img/yuria_cutin.webp',nodeArt:'img/yuria_face.webp',vid:'yuria_ult.mp4',
-    domainTint:'blood',cutinOpt:{kanji:'',eng:'',kor:'혈야의 영지',cls:'yuria'},domMsg:'핏빛 안개가 전장을 뒤덮었다.'}};
+    domainTint:'blood',cutinOpt:{kanji:'',eng:'',kor:'혈야의 영지',cls:'yuria'},domMsg:'핏빛 안개가 전장을 뒤덮었다.'},
+  one:{id:'one',name:'온리 원',en:'Only One',sig:'黒物質の女王',base:ONE_BASE,els:ONE_BASE.els,img:'img/one_char.webp',face:'img/one_face.webp',back:'img/one_char.webp',back2:null,cutin:'img/one_cutin.webp',nodeArt:'img/one_key.webp',vid:'one_ult.mp4',
+    domainTint:'mono',cutinOpt:{kanji:'',eng:'',kor:'여왕의 다크매터',cls:'one'},domMsg:'세상의 색이 빠져나갔다.'}};
 const heroEmblem=id=>dualEmblem(HEROES[id].els[0],HEROES[id].els[1]);
 const DUAL_FD=dualEmblem('fire','dark');
 const SK_SFX={flashPoint:'stab',crimsonBandCombo:'combo5',horizontalSweep:'sweep2',crescentMoon:'crescent2',bloodBrush:'ult_blood'};
@@ -5369,13 +5974,13 @@ function toast(t){toastEl.textContent=t;toastEl.hidden=false;clearTimeout(toastT
 function flashW(){const f=document.createElement('div');f.className='flashw';stage.appendChild(f);setTimeout(()=>f.remove(),520)}
 /* 메뉴/화면 전환용: 흰 번쩍임 대신 짧은 어두운 페이드 */
 function flashUI(){flashW()}
-var ULT_SRC="ult.mp4",YULT_SRC="yuria_ult.mp4";const CUTIN_SRC="img/cutin.webp",DOMBG_SRC="img/dombg.webp",LOADING_SRC="img/loading.webp",LOBBY_SRC="img/lobby.webp";
+var ULT_SRC="ult.mp4",YULT_SRC="yuria_ult.mp4",OULT_SRC="one_ult.mp4";const CUTIN_SRC="img/cutin.webp",DOMBG_SRC="img/dombg.webp",LOADING_SRC="img/loading.webp",LOBBY_SRC="img/lobby.webp";
 
 /* ── 로비 동작 ── */
 document.querySelectorAll('[data-soon]').forEach(b=>b.onclick=()=>toast(`${b.dataset.soon} — 준비 중인 메뉴입니다`));
 $('toast').style.zIndex=60;
-let lbIdx=0;const LB=[{ch:'rod',t:'흑월의 검객,<br>로스바이세',g:0},{ch:'yuria',t:'홍련의 검귀,<br>쿠죠 유리아',g:1}];
-function renderLBanner(){const b=LB[lbIdx],el=$('lBanner');el.querySelector('img').src=HEROES[b.ch].face;el.querySelector('.lbt').innerHTML=`<small>${b.ch==='yuria'?'NEW CHARACTER':'PICK UP'}</small>${b.t}`;el.querySelectorAll('.ldots b').forEach((d,i)=>d.classList.toggle('on',i===lbIdx))}
+let lbIdx=0;const LB=[{ch:'rod',t:'흑월의 검객,<br>로스바이세',g:0},{ch:'yuria',t:'홍련의 검귀,<br>쿠죠 유리아',g:1},{ch:'one',t:'흑물질의 여왕,<br>온리 원',g:2}];
+function renderLBanner(){const b=LB[lbIdx],el=$('lBanner');el.querySelector('img').src=HEROES[b.ch].face;el.querySelector('.lbt').innerHTML=`<small>${b.ch==='one'?'NEW CHARACTER':b.ch==='yuria'?'PICK UP':'PICK UP'}</small>${b.t}`;el.querySelectorAll('.ldots b').forEach((d,i)=>d.classList.toggle('on',i===lbIdx))}
 $('lBanner').onclick=()=>openGacha(LB[lbIdx].g);setInterval(()=>{if(!$('lobby').hidden){lbIdx=(lbIdx+1)%LB.length;renderLBanner()}},5000);renderLBanner();
 document.querySelectorAll('.levent').forEach(b=>b.onclick=()=>openGacha(+b.dataset.g));
 $('lMenu').onclick=()=>{const b=$('lMenu'),open=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',!open);$('lMenuItems').hidden=open};
@@ -5390,7 +5995,7 @@ function openChar(){
 }
 const ROSTER=[
   {id:'rod',name:'로스바이세',lv:1,r:5,els:['light','dark'],img:'img/char_hd.webp',owned:true,asc:0},
-  {id:'yuria',name:'쿠죠 유리아',lv:1,r:5,els:['fire','dark'],img:'img/yuria_char.webp',owned:false,asc:0},{id:'u2',name:'???',lv:1,r:4,els:['water'],owned:false},
+  {id:'yuria',name:'쿠죠 유리아',lv:1,r:5,els:['fire','dark'],img:'img/yuria_char.webp',owned:false,asc:0},{id:'one',name:'온리 원',lv:1,r:5,els:['dark','water'],img:'img/one_char.webp',owned:false,asc:0},
   {id:'u3',name:'???',lv:1,r:4,els:['grass'],owned:false},{id:'u4',name:'???',lv:1,r:5,els:['light'],owned:false},{id:'u5',name:'???',lv:1,r:4,els:['dark'],owned:false}];
 const SIL='<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7Z"/></svg>';
 function ccard(ch){const n=ch.r>=5?5:4,asc=ch.asc||0,st=Array.from({length:n},(_,i)=>`<i class="${i<asc?'on':''}"></i>`).join(''),gold=ch.r<5;
@@ -5420,7 +6025,13 @@ const SKI={
   light:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v5M12 17v5M2 12h5M17 12h5M5 5l3.5 3.5M15.5 15.5 19 19M5 19l3.5-3.5M15.5 8.5 19 5"/><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M3 21 21 3" stroke="#ffd76a" stroke-width="2.5"/></svg>',
   gold:'<svg viewBox="0 0 24 24" fill="none"><path d="M7 4A8 8 0 1 0 15 18 6.4 6.4 0 0 1 7 4Z" fill="#ffd76a"/><path d="M13 2A8 8 0 1 0 21 16 6.4 6.4 0 0 1 13 2Z" fill="#ff9a3c" opacity=".9"/><path d="M3 21 21 3" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>',
   guard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5 20 5.5V12c0 4.8-3.6 8-8 9.5C7.6 20 4 16.8 4 12V5.5Z"/><path d="M13.5 8a4 4 0 1 0 2.5 6.5A3.2 3.2 0 0 1 13.5 8Z" fill="#ffd76a" stroke="none"/></svg>',
+  dark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="currentColor"/><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg>',
   ult:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="6" fill="#fff"/><path d="M12 10a6 6 0 0 1 4 1.6A6 6 0 1 1 8 5a6 6 0 0 0 4 5Z" fill="#2a1d8a" opacity=".85" stroke="none"/><path d="M6 20l6 2 6-2M9 17l3 3 3-3" stroke="#fff"/></svg>'};
+const ONE_SKILLS=[
+  {n:'여왕의 품격',i:'pas',lv:1,pas:true,d:'기본 스킬(패시브) · 아군이 실드를 두른 상태로 피격되면 온리 원의 궁극기 게이지 +10. 영역 전개 중 받는 회복량 +20%.'},
+  {n:'다크매터',i:'dark',lv:1,d:'어둠·물 혼합 · 위력 70 · 암흑물질을 압축했다가 폭발시킨다. 명중 시 아군 전체에게 실드(다음 피격 피해 50% 감경).'},
+  {n:'다크매터 폭발',i:'ult',lv:1,ult:true,d:'궁극기 · 어둠·물 혼합 속성 · 위력 150 · 두 속성 중 유리한 쪽으로 판정. 적의 방어 -2 (지속).'},
+  {n:'여왕의 다크매터',i:'pas',lv:1,ult:true,d:'영역 전개 고유 효과 · 세상의 색이 사라진다. 3턴 동안 매 턴 아군 전체 HP 8% 회복 · 영역 동안 아군이 준 피해의 10%를 모아 영역이 닫힐 때 적에게 암흑 폭풍으로 되돌린다.'}];
 const YURIA_SKILLS=[
   {n:'홍련의 피',i:'pas',lv:1,pas:true,d:'기본 스킬(패시브) · HP 50% 이하일 때 치명타 확률 +15%. 출혈 상태의 적에게 주는 피해 +15%.'},
   {n:'섬광점',i:'flash',lv:1,d:'불 · 위력 70 · 적의 급소를 꿰뚫어 방어 -1.'},
@@ -5441,13 +6052,13 @@ function openDetail(id){
   if(id&&HEROES[id])CUR=id;const H=HEROES[CUR],P=chP(CUR);
   flashW();show('detail');$('detail').classList.remove('arti','nodetab');$('detail').dataset.ch=CUR;
   $('dArt').src=H.img;$('nArt').src=H.nodeArt;$('dSig').textContent=H.sig;$('dNameK').textContent=H.name;$('dNameE').textContent=H.en;$('dName').innerHTML=`${H.name} <span class="rolei" title="브레이커">✸</span>`;
-  const b=bonus(CUR),asc=P.nodes||0,SKL=CUR==='rod'?HERO_SKILLS:YURIA_SKILLS;
+  const b=bonus(CUR),asc=P.nodes||0,SKL=CUR==='rod'?HERO_SKILLS:CUR==='one'?ONE_SKILLS:YURIA_SKILLS;
   $('dLv').textContent='Lv.'+P.lv;$('dEls').innerHTML=heroEmblem(CUR);$('dAsc').innerHTML=Array.from({length:5},(_,i)=>`<i class="${i<asc?'on':''}"></i>`).join('');
   const row=(k,v,bn)=>`<tr><td>${k}</td><td>${v+bn}${bn?`<em>+${bn}</em>`:''}</td></tr>`;const hs=heroStats(P.lv,CUR);
   $('dStat').innerHTML=row('체력',hs.hp,b.hp)+row('공격력',hs.atk,b.atk)+row('방어력',hs.def,b.def)+row('스피드',hs.spd,b.spd)+`<tr><td>치명타 확률</td><td>${hs.crit+b.crit}%${b.crit?`<em>+${b.crit}%</em>`:''}</td></tr><tr><td>치명타 피해</td><td>${hs.cdmg+b.cdmg}%${b.cdmg?`<em>+${b.cdmg}%</em>`:''}</td></tr>`;
   $('dSkills').innerHTML=SKL.map((s,i)=>`<button class="sk${s.ult?' ult':''}${s.pas?' pas':''}" data-i="${i}" aria-label="${s.n}"><span class="ico">${SKI[s.i]}</span><span class="sl">${s.pas?'기본':'Lv.'+s.lv}</span></button>`).join('');
   $('dSkDesc').innerHTML='스킬 아이콘을 누르면 설명이 표시됩니다.';
-  $('dSkills').querySelectorAll('.sk').forEach(bt=>bt.onclick=()=>{$('dSkills').querySelectorAll('.sk').forEach(x=>x.classList.remove('on'));bt.classList.add('on');const s=(CUR==='rod'?HERO_SKILLS:YURIA_SKILLS)[+bt.dataset.i];$('dSkDesc').innerHTML=`<b>${s.n}</b> — ${s.d}`});
+  $('dSkills').querySelectorAll('.sk').forEach(bt=>bt.onclick=()=>{$('dSkills').querySelectorAll('.sk').forEach(x=>x.classList.remove('on'));bt.classList.add('on');const s=(CUR==='rod'?HERO_SKILLS:CUR==='one'?ONE_SKILLS:YURIA_SKILLS)[+bt.dataset.i];$('dSkDesc').innerHTML=`<b>${s.n}</b> — ${s.d}`});
   $('dTabs').querySelectorAll('.dtab').forEach(t=>t.classList.toggle('on',t.dataset.tab==='basic'));
 }
 function closeDetail(){show('chars');renderChars()}
@@ -5499,15 +6110,19 @@ const SIG_ITEM={id:'x1',n:'홍엽월검 · 紅葉月劍',slot:'weapon',st:{atk:3
   d:'붉은 단풍이 지는 정자에서 로스바이세가 직접 벼린 전용 검. 흰 리본은 그믐의 맹세, 금빛 문양은 보름의 약속. 소환으로만 손에 넣을 수 있다.',
   pas:'전용 효과 · 로스바이세 장착 시 궁극기 게이지 충전량 +50%, 빛·어둠 기술 위력 +10%'};
 const SIG_REGION_Y={id:'sigy',name:'쿠죠 유리아 전용',el:'fire'};
+const SIG_REGION_O={id:'sigo',name:'온리 원 전용',el:'dark'};
+const SIG_ITEM_O={id:'x3',n:'흑익의 여왕 · 黒翼の女王',slot:'armor',st:{def:22,hp:40,atk:12},r:5,sig:true,art:'img/one_sig.webp',key:'img/one_sigkey.webp',
+  d:'무너진 도시 위, 검은 날개를 펼친 온리 원의 모습이 깃든 드레스. 색을 잃은 세계에서도 여왕의 자리는 변하지 않는다. 소환으로만 손에 넣을 수 있다.',
+  pas:'전용 효과 · 온리 원 장착 시 다크매터 실드 지속 +1회, 어둠·물 기술 위력 +10%'};
 const SIG_ITEM_Y={id:'x2',n:'홍련야행 · 紅蓮夜行',slot:'acc',st:{atk:24,spd:10,cdmg:20},r:5,sig:true,art:'img/ysig.webp',key:'img/ysigkey.webp',
   d:'달밤의 신사 돌계단, 단풍 위에 앉아 음악을 듣던 유리아의 주홍 헤드폰과 홍련의 외투. 영지를 펼치기 전 그녀가 반드시 거치는 의식. 소환으로만 손에 넣을 수 있다.',
   pas:'전용 효과 · 쿠죠 유리아 장착 시 영역 게이지 충전량 +50%, 불·어둠 기술 위력 +10%'};
 const ART_SRC={f1:'img/art_f1.webp',f2:'img/art_f2.webp',f3:'img/art_f3.webp',w1:'img/art_w1.webp',w2:'img/art_w2.webp',w3:'img/art_w3.webp',g1:'img/art_g1.webp',g2:'img/art_g2.webp',g3:'img/art_g3.webp',l1:'img/art_l1.webp',l2:'img/art_l2.webp',l3:'img/art_l3.webp',d1:'img/art_d1.webp',d2:'img/art_d2.webp',d3:'img/art_d3.webp',s1:'img/art_s1.webp',s2:'img/art_s2.webp',s3:'img/art_s3.webp'};
-const ITEM_BY=Object.fromEntries([...REGIONS.flatMap(r=>r.items.map(i=>[i.id,{...i,region:r,art:ART_SRC[i.id]}])),['x1',{...SIG_ITEM,region:SIG_REGION}],['x2',{...SIG_ITEM_Y,region:SIG_REGION_Y}]]);
-const hasSig=()=>INV.ceq.rod==='x1';const hasSigY=()=>INV.ceq.yuria==='x2';
-let INV={owned:[],ceq:{rod:null,yuria:null},teq:[null,null,null],cleared:[]};
+const ITEM_BY=Object.fromEntries([...REGIONS.flatMap(r=>r.items.map(i=>[i.id,{...i,region:r,art:ART_SRC[i.id]}])),['x1',{...SIG_ITEM,region:SIG_REGION}],['x2',{...SIG_ITEM_Y,region:SIG_REGION_Y}],['x3',{...SIG_ITEM_O,region:SIG_REGION_O}]]);
+const hasSig=()=>INV.ceq.rod==='x1';const hasSigY=()=>INV.ceq.yuria==='x2';const hasSigO=()=>INV.ceq.one==='x3';
+let INV={owned:[],ceq:{rod:null,yuria:null,one:null},teq:[null,null,null],cleared:[]};
 try{const s=JSON.parse(localStorage.getItem('hm_inv')||'null');if(s&&s.owned)INV={...INV,...s}}catch(e){}
-if(!INV.ceq)INV.ceq={rod:null};if(INV.ceq.yuria===undefined)INV.ceq.yuria=null;if(!INV.teq)INV.teq=[null,null,null];
+if(!INV.ceq)INV.ceq={rod:null};if(INV.ceq.yuria===undefined)INV.ceq.yuria=null;if(INV.ceq.one===undefined)INV.ceq.one=null;if(!INV.teq)INV.teq=[null,null,null];
 if(INV.eq){const old=Object.values(INV.eq).filter(Boolean);if(!INV.ceq.rod&&old.length)INV.ceq.rod=old.shift();old.slice(0,3).forEach((id,i)=>{if(!INV.teq[i])INV.teq[i]=id});delete INV.eq}
 INV.owned=INV.owned.filter(id=>ITEM_BY[id]);
 const allEq=()=>[...Object.values(INV.ceq),...INV.teq].filter(Boolean);const charEq=id=>[INV.ceq[id],...INV.teq].filter(Boolean);
@@ -5691,7 +6306,7 @@ function damage(att,def,m,o={}){
   const e=moveEff(m,def.els),stab=(m.els?att.els.some(x=>m.els.includes(x)):att.els.includes(m.el))?1.5:1,crit=Math.random()*100<(att.crit||5)+(o.crit||0)+pcrit;
   const isH=!!att.def_,isHd=!!def.def_,cx=coexist();
   const dm=domOn()?(isH?(cx?1.45:1.3):isHd?(cx?.6:.7):1):1,bk=(!isHd&&def.broken>0)?1.15:1;
-  const sg=(isH&&((att.id==='rod'&&hasSig()&&(m.el==='light'||m.el==='dark'))||(att.id==='yuria'&&hasSigY()&&(m.el==='fire'||m.el==='dark'))))?1.1:1;
+  const sg=(isH&&((att.id==='rod'&&hasSig()&&(m.el==='light'||m.el==='dark'))||(att.id==='yuria'&&hasSigY()&&(m.el==='fire'||m.el==='dark'))||(att.id==='one'&&hasSigO()&&(m.el==='dark'||m.el==='water'))))?1.1:1;
   const pb=(att.id==='yuria'&&def.bleed>0)?1.15:1,pd=(isHd&&def.id==='rod'&&domOn())?.9:1;
   let dmg=base*stab*e*(crit?(att.cdmg||150)/100:1)*dm*sg*pb*pd*bk*(.85+Math.random()*.15);
   let shielded=false;if(isHd&&def.shield>0){dmg*=.5;shielded=true}
@@ -6186,7 +6801,7 @@ let CUR='rod';
 const LV_MAX=60;
 const FACE_SRC=document.querySelector('.pslot.me img').src;
 /* 1레벨 기준 스탯 + 레벨당 성장 (Lv.30에서 기존 수치와 일치) */
-const HERO_G={rod:{b:{hp:120,atk:30,def:24,spd:100},g:{hp:11,atk:2.3,def:1.93,spd:.3}},yuria:{b:{hp:110,atk:33,def:22,spd:108},g:{hp:10,atk:2.45,def:1.8,spd:.3}}};
+const HERO_G={rod:{b:{hp:120,atk:30,def:24,spd:100},g:{hp:11,atk:2.3,def:1.93,spd:.3}},yuria:{b:{hp:110,atk:33,def:22,spd:108},g:{hp:10,atk:2.45,def:1.8,spd:.3}},one:{b:{hp:130,atk:28,def:28,spd:96},g:{hp:10,atk:2.2,def:1.93,spd:0}}};
 function heroStats(lv,id='rod'){const H=HERO_G[id]||HERO_G.rod,b=HEROES[id].base,d=lv-1;return{hp:Math.round(H.b.hp+d*H.g.hp),atk:Math.round(H.b.atk+d*H.g.atk),def:Math.round(H.b.def+d*H.g.def),spd:Math.round(H.b.spd+d*H.g.spd),crit:b.crit,cdmg:b.cdmg}}
 const luCost=lv=>14*lv+10;
 const expNeed=lv=>Math.round(30*Math.pow(lv,1.35))+40;
@@ -6240,7 +6855,7 @@ function artInfo(it,o={}){if(!it)return `<div class="empty">${o.empty||'아티�
   ${pic}<div class="alv"><span>Lv.${lv}</span>${eq&&!o.card?`<span class="eqtag"><img src="${FACE_SRC}" alt="">장착 중</span>`:''}</div>
   ${o.card?'':`<div class="apills">${rpill(it.r)}${elb(it.region.el)}</div><div class="asb">${Array.from({length:5},(_,i)=>`<i class="${i<it.r?'on':''}"></i>`).join('')}</div>`}
   <table class="dstat">${stat}</table>
-  <div class="aeff">${it.pas?`<div class="sigp">✦ ${it.pas}</div>`:''}<div>${it.sig?heroEmblem(it.id==='x1'?'rod':'yuria')+' '+HEROES[it.id==='x1'?'rod':'yuria'].name:heroEmblem(CUR)+' '+HEROES[CUR].name} 장착 시 적용<span class="on">ON</span></div><div>착용자의 ${STN[main]} <em>${it.st[main]>0?'+':''}${it.st[main]}</em>, ${it.r>=5?'치명타 확률 <em>7.5%</em> 증가':'치명타 확률 <em>5%</em> 증가'}</div><div>착용자가 ${elb(it.region.el)} 속성 기술 사용 시 위력 <em>${it.r>=5?'10.5%':'7%'}</em> 증가 (유지 1턴)</div>
+  <div class="aeff">${it.pas?`<div class="sigp">✦ ${it.pas}</div>`:''}<div>${it.sig?heroEmblem(it.id==='x1'?'rod':it.id==='x3'?'one':'yuria')+' '+HEROES[it.id==='x1'?'rod':it.id==='x3'?'one':'yuria'].name:heroEmblem(CUR)+' '+HEROES[CUR].name} 장착 시 적용<span class="on">ON</span></div><div>착용자의 ${STN[main]} <em>${it.st[main]>0?'+':''}${it.st[main]}</em>, ${it.r>=5?'치명타 확률 <em>7.5%</em> 증가':'치명타 확률 <em>5%</em> 증가'}</div><div>착용자가 ${elb(it.region.el)} 속성 기술 사용 시 위력 <em>${it.r>=5?'10.5%':'7%'}</em> 증가 (유지 1턴)</div>
   <div class="ul"><span class="ic">${SKI.ult}</span><span>얼티메이트 스킬<br>+Lv.${lv}</span></div></div>`}
 const ownedItems=()=>INV.owned.map(id=>ITEM_BY[id]);
 function sortItems(arr,key){const s={slot:(a,b)=>a.slot.localeCompare(b.slot),rar:(a,b)=>b.r-a.r,el:(a,b)=>a.region.el.localeCompare(b.region.el),lv:(a,b)=>ALV(b.id)-ALV(a.id)}[key]||(()=>0);return [...arr].sort(s)}
@@ -6412,7 +7027,13 @@ const NODES_Y=[
   {n:'불꽃과 어둠의 균형',eff:'공격력 +6',st:{atk:6},pos:[36,38],gold:1200,shard:2},
   {n:'핏빛 결계',eff:'방어력 +6',st:{def:6},pos:[68,72],gold:1600,shard:2},
   {n:'영지의 주인',eff:'공격력 +8 · HP +20',st:{atk:8,hp:20},pos:[78,52],gold:2400,shard:3}];
-const NODES_BY={rod:NODES,yuria:NODES_Y};
+const NODES_O=[
+  {n:'여왕의 각인',eff:'HP +12',st:{hp:12},pos:[36,78],gold:500,shard:1},
+  {n:'검은 날개',eff:'스피드 +4',st:{spd:4},pos:[27,60],gold:800,shard:1},
+  {n:'어둠과 물의 균형',eff:'공격력 +6',st:{atk:6},pos:[36,38],gold:1200,shard:2},
+  {n:'무채색 결계',eff:'방어력 +6',st:{def:6},pos:[68,72],gold:1600,shard:2},
+  {n:'흑물질의 여왕',eff:'공격력 +8 · HP +20',st:{atk:8,hp:20},pos:[78,52],gold:2400,shard:3}];
+const NODES_BY={rod:NODES,yuria:NODES_Y,one:NODES_O};
 function nodeBonus(id='rod'){const b={atk:0,def:0,hp:0,spd:0,crit:0,cdmg:0},N=NODES_BY[id]||NODES,n=chP(id).nodes;for(let i=0;i<n;i++)for(const k in N[i].st)b[k]+=N[i].st[k];return b}
 let nodeSel=null;
 function renderNodes(){
@@ -6447,6 +7068,8 @@ const BANNERS=[
     lines:[['SSR','로스바이세'],['SSR','홍엽월검 · 紅葉月劍']],pick:{n:'로스바이세',r:5},feat:'x1',bgArt:'char',stage:'hero',thumb:'linear-gradient(120deg,#5a4520,#15110a)'},
   {id:'picky',cls:'pick yuria',name:'쿠죠 유리아',en:'Kujo Yuria · Pick Up',title:'픽업 소환',tag:'신규 출시!',ga:'#ff1c3a',ga2:'#ffd0d8',time:'7일 남음',ch:'yuria',
     lines:[['SSR','쿠죠 유리아'],['SSR','홍련야행 · 紅蓮夜行']],pick:{n:'쿠죠 유리아',r:5},feat:'x2',bgArt:'key',stage:'yuria',thumb:'linear-gradient(120deg,#5a0a14,#15060a)'},
+  {id:'picko',cls:'pick one',name:'온리 원',en:'Only One · Pick Up',title:'픽업 소환',tag:'신규 출시!',ga:'#b9b9c9',ga2:'#ffffff',time:'7일 남음',ch:'one',
+    lines:[['SSR','온리 원'],['SSR','흑익의 여왕 · 黒翼の女王']],pick:{n:'온리 원',r:5},feat:'x3',bgArt:'okey',stage:'one',thumb:'linear-gradient(120deg,#2a2a33,#0a0a0e)'},
   {id:'std',cls:'std',name:'상시 소환',en:'Gacha · Standard',title:'상시 소환',tag:'상시 개최!',ga:'#b9a0f4',ga2:'#e9e0ff',time:'',
     lines:[['SSR','마법사 확정'],['SSR','아티팩트 확정']],pick:null,feat:'stack',bgArt:'lobby',stage:'awk',thumb:'linear-gradient(120deg,#1e3a7a,#0a1226)'}];
 let gSel=0;
@@ -6459,13 +7082,13 @@ const mgSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 function openGacha(i){show('gacha');if(i!=null)gSel=i;renderGacha()}
 function renderGacha(){
   const bn=BANNERS[gSel],g=$('gacha');g.className='scr gacha '+bn.cls;g.style.setProperty('--ga',bn.ga);g.style.setProperty('--ga2',bn.ga2);
-  $('gBgArt').style.backgroundImage=bn.bgArt==='char'?`url(${ROSTER[0].img})`:bn.bgArt==='face'?`url(${FACE_SRC})`:bn.bgArt==='lobby'?`url(${LOBBY_SRC})`:bn.bgArt==='key'?`url(${HEROES.yuria.nodeArt})`:'none';$('gBgArt').classList.toggle('scene',bn.bgArt==='lobby'||bn.bgArt==='key');
-  $('gStage').innerHTML=bn.stage==='hero'?`<span class="glow"></span><img class="ghero" src="${ROSTER[0].img}" alt="">`:bn.stage==='yuria'?`<span class="glow"></span><img class="ghero yu" src="${HEROES.yuria.img}" alt="">`
+  $('gBgArt').style.backgroundImage=bn.bgArt==='char'?`url(${ROSTER[0].img})`:bn.bgArt==='face'?`url(${FACE_SRC})`:bn.bgArt==='lobby'?`url(${LOBBY_SRC})`:bn.bgArt==='key'?`url(${HEROES.yuria.nodeArt})`:bn.bgArt==='okey'?`url(${HEROES.one.nodeArt})`:'none';$('gBgArt').classList.toggle('scene',bn.bgArt==='lobby'||bn.bgArt==='key'||bn.bgArt==='okey');
+  $('gStage').innerHTML=bn.stage==='hero'?`<span class="glow"></span><img class="ghero" src="${ROSTER[0].img}" alt="">`:bn.stage==='yuria'?`<span class="glow"></span><img class="ghero yu" src="${HEROES.yuria.img}" alt="">`:bn.stage==='one'?`<span class="glow"></span><img class="ghero on" src="${HEROES.one.img}" alt="">`
     :bn.stage==='trio'?`<img class="trio2" src="${BACK2_IMG||ROSTER[0].img}" alt=""><img class="trio" src="${ROSTER[0].img}" alt="">`
     :`<img class="awk" src="${BACK2_IMG||ROSTER[0].img}" alt="">`;
   $('gTitle').innerHTML=`${bn.title} <i class="qm">?</i>`;
   $('gTickets').textContent=fmt(PROG.tickets);$('gGems').textContent=fmt(PROG.gems);$('gPts').textContent=fmt(PROG.pts);
-  $('gThumbs').innerHTML=BANNERS.map((b,i)=>{const img=b.id==='picky'?`<img src="${HEROES.yuria.nodeArt}" alt="" style="left:0;top:-30%;width:100%">`:b.id==='std'?`<img src="${LOBBY_SRC}" alt="" style="left:0;top:-40%;width:100%">`:`<img src="${ROSTER[0].img}" alt="" style="right:-6%;top:-10%;height:170%">`;
+  $('gThumbs').innerHTML=BANNERS.map((b,i)=>{const img=b.id==='picky'?`<img src="${HEROES.yuria.nodeArt}" alt="" style="left:0;top:-30%;width:100%">`:b.id==='picko'?`<img src="${HEROES.one.nodeArt}" alt="" style="left:0;top:-20%;width:100%">`:b.id==='std'?`<img src="${LOBBY_SRC}" alt="" style="left:0;top:-40%;width:100%">`:`<img src="${ROSTER[0].img}" alt="" style="right:-6%;top:-10%;height:170%">`;
     return `<button class="gth${i===gSel?' on':''}" data-i="${i}" style="--tb:${b.thumb}"><span class="tbg"></span>${img}<span class="tgl"></span><span class="tsub">${b.id==='std'?'STANDARD':'PICK UP'}</span><span class="tnm">${b.name}</span></button>`}).join('');
   $('gThumbs').querySelectorAll('.gth').forEach(t=>t.onclick=()=>{gSel=+t.dataset.i;renderGacha()});
   $('gPanel').innerHTML=`<span class="gtag">${bn.tag}</span><div class="gname"><i class="st a">✦</i><i class="st b">✦</i><i class="st c">✦</i>${bn.name}<small>${bn.en}</small></div><div class="gline"></div>
@@ -6479,8 +7102,8 @@ function renderGacha(){
 const POOL_ART=Object.values(ITEM_BY);
 function rollOne(bn){
   const r=Math.random();
-  if(r<0.015)return{type:'char',id:bn.ch||(Math.random()<.5?'rod':'yuria')};
-  if(r<0.03){const pick=bn.id==='pick'?ITEM_BY['x1']:bn.id==='picky'?ITEM_BY['x2']:null;const ssr=POOL_ART.filter(i=>i.r>=5);return{type:'art',it:pick&&Math.random()<.5?pick:ssr[Math.floor(Math.random()*ssr.length)]}}
+  if(r<0.015)return{type:'char',id:bn.ch||['rod','yuria','one'][Math.floor(Math.random()*3)]};
+  if(r<0.03){const pick=bn.id==='pick'?ITEM_BY['x1']:bn.id==='picky'?ITEM_BY['x2']:bn.id==='picko'?ITEM_BY['x3']:null;const ssr=POOL_ART.filter(i=>i.r>=5);return{type:'art',it:pick&&Math.random()<.5?pick:ssr[Math.floor(Math.random()*ssr.length)]}}
   if(r<0.15){const sr=POOL_ART.filter(i=>i.r<5);return{type:'art',it:sr[Math.floor(Math.random()*sr.length)]}}
   if(r<0.45)return{type:'mat',n:'경험의 서',k:'books',q:1};
   if(r<0.65)return{type:'mat',n:'골드',k:'gold',q:300};
@@ -6490,7 +7113,7 @@ const MATBG={books:'linear-gradient(160deg,#4a3f8a,#1d1838)',shards:'linear-grad
 const MATIC={books:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z"/><path d="M8 17h11M9 8h6M9 11h4"/></svg>',shards:'<svg viewBox="0 0 24 24" fill="#c9b6ff"><path d="M12 2l3 7 7 1-5 5 1.5 7L12 18.5 5.5 22 7 15 2 10l7-1Z"/></svg>',gold:'<i class="coin" style="width:40%;height:40%"></i>'};
 function applyRoll(x){
   if(x.type==='char'){const H=HEROES[x.id],dup=isOwned(x.id);if(dup)chP(x.id).shards+=3;else{PROG.owned.push(x.id);const c=ROSTER.find(c=>c.id===x.id);if(c)c.owned=true}
-    return{r:5,html:`<div class="chr"><img class="${x.id==='yuria'?'yu':''}" src="${H.img}" alt=""><span class="rb r5"></span><span class="dup">${dup?'중복 → 흑월의 조각 ×3':'NEW!'}</span><span class="plate">${H.name}</span></div>`,name:H.name,isChar:true,chId:x.id}}
+    return{r:5,html:`<div class="chr"><img class="${x.id==='yuria'?'yu':x.id==='one'?'on':''}" src="${H.img}" alt=""><span class="rb r5"></span><span class="dup">${dup?'중복 → 흑월의 조각 ×3':'NEW!'}</span><span class="plate">${H.name}</span></div>`,name:H.name,isChar:true,chId:x.id}}
   if(x.type==='art'){const it=x.it,dup=INV.owned.includes(it.id);if(dup)PROG.gold+=it.r>=5?800:300;else INV.owned.push(it.id);
     return{r:it.r,it,dup,html:artCardArt(it)+(dup?`<span class="dup">중복 → 골드 ${it.r>=5?800:300}</span>`:''),name:it.n}}
   PROG[x.k]+=x.q;const DESC={books:'마법사의 경험을 담은 책. 레벨 업에 사용한다.',shards:'마력 노드 개방에 사용한다.',gold:'흑월 지구의 통화.'};return{r:0,q:x.q,bg:MATBG[x.k],ic:MATIC[x.k],desc:DESC[x.k],html:`<div class="mat" style="--bg:${MATBG[x.k]}">${MATIC[x.k]}<b>×${x.q}</b><small>${x.n}</small></div>`,name:x.n};
@@ -6545,7 +7168,7 @@ async function playSummon(res){
 }
 function revealCard(c,quiet){
   if(c.classList.contains('open'))return;c.classList.add('open');const r=gReveal[+c.dataset.i];
-  if(r.r>=5&&!quiet){const b=document.createElement('div');b.className='gssr-banner';b.innerHTML=`${r.isChar?`<img src="${(HEROES[r.chId]||ROSTER[0]).img}" alt=""${r.chId==='yuria'?' class="yu"':''}>`:''}<span><span class="t">SSR</span><br><span class="n">${r.name}</span></span>`;$('gSummon').appendChild(b);setTimeout(()=>b.remove(),2500);
+  if(r.r>=5&&!quiet){const b=document.createElement('div');b.className='gssr-banner';b.innerHTML=`${r.isChar?`<img src="${(HEROES[r.chId]||ROSTER[0]).img}" alt=""${r.chId==='yuria'?' class="yu"':r.chId==='one'?' class="on"':''}>`:''}<span><span class="t">SSR</span><br><span class="n">${r.name}</span></span>`;$('gSummon').appendChild(b);setTimeout(()=>b.remove(),2500);
     const rect=c.getBoundingClientRect(),s=stage.getBoundingClientRect();burst(rect.left-s.left+rect.width/2,rect.top-s.top+rect.height/2,40,['#f4a6d6','#c895e0','#c6f6ff','#fff'],{sp:320,life:.9,s:3})}
   else if(r.r===4&&!quiet){const rect=c.getBoundingClientRect(),s=stage.getBoundingClientRect();burst(rect.left-s.left+rect.width/2,rect.top-s.top+rect.height/2,16,['#ffd76a','#fff3c4'],{sp:200,life:.6,s:2.5})}
 }
@@ -6600,7 +7223,7 @@ const ACC=(()=>{
   const valid=(id,pw)=>{if(!/^[A-Za-z0-9_]{3,16}$/.test(id))return'아이디는 영문·숫자·_ 3~16자';if(!pw||pw.length<4)return'비밀번호는 4자 이상';return''};
   async function signup(id,pw,pw2){const v=valid(id,pw);if(v)return v;if(pw!==pw2)return'비밀번호 확인이 일치하지 않습니다';
     if(await getAcc(id))return'이미 사용 중인 아이디입니다';const s=salt();await putAcc(id,{salt:s,hash:await sha(s+'|'+pw),created:Date.now()});
-    await putSave(id,{prog:JSON.parse(JSON.stringify(PROG_DEF)),inv:{owned:[],ceq:{rod:null,yuria:null},teq:[null,null,null],cleared:[]},updated:Date.now()});return''}
+    await putSave(id,{prog:JSON.parse(JSON.stringify(PROG_DEF)),inv:{owned:[],ceq:{rod:null,yuria:null,one:null},teq:[null,null,null],cleared:[]},updated:Date.now()});return''}
   async function login(id,pw){const a=await getAcc(id);if(!a)return'존재하지 않는 아이디입니다';if(a.hash!==await sha(a.salt+'|'+pw))return'비밀번호가 올바르지 않습니다';
     const sv=await getSave(id);applySave(sv);cur=id;try{localStorage.setItem(LS_CUR,id)}catch(e){}return''}
   function logout(){flush();cur=null;try{localStorage.removeItem(LS_CUR)}catch(e){}location.reload()}
@@ -6633,8 +7256,8 @@ function applySave(sv){
   // DB 에서 받은 객체는 동결(frozen)되어 있을 수 있으므로 반드시 깊은 복사해서 사용
   const clone=o=>{try{return JSON.parse(JSON.stringify(o||{}))}catch(e){return{}}};
   for(const k of Object.keys(PROG))delete PROG[k];Object.assign(PROG,JSON.parse(JSON.stringify(PROG_DEF)),clone(sv&&sv.prog));migrateProg();
-  for(const k of Object.keys(INV))delete INV[k];Object.assign(INV,{owned:[],ceq:{rod:null,yuria:null},teq:[null,null,null],cleared:[]},clone(sv&&sv.inv));
-  if(!INV.ceq)INV.ceq={rod:null,yuria:null};if(INV.ceq.yuria===undefined)INV.ceq.yuria=null;if(!INV.teq)INV.teq=[null,null,null];INV.owned=(INV.owned||[]).filter(id=>ITEM_BY[id]);if(!INV.cleared)INV.cleared=[];
+  for(const k of Object.keys(INV))delete INV[k];Object.assign(INV,{owned:[],ceq:{rod:null,yuria:null,one:null},teq:[null,null,null],cleared:[]},clone(sv&&sv.inv));
+  if(!INV.ceq)INV.ceq={rod:null,yuria:null};if(INV.ceq.yuria===undefined)INV.ceq.yuria=null;if(INV.ceq.one===undefined)INV.ceq.one=null;if(!INV.teq)INV.teq=[null,null,null];INV.owned=(INV.owned||[]).filter(id=>ITEM_BY[id]);if(!INV.cleared)INV.cleared=[];
   if(PROG.gems==null)PROG.gems=600;if(PROG.tickets==null)PROG.tickets=0;if(PROG.pts==null)PROG.pts=0;
   ROSTER.forEach(c=>{if(HEROES[c.id]){c.lv=chP(c.id).lv;c.asc=chP(c.id).nodes;c.owned=isOwned(c.id)}});
   try{localStorage.setItem('hm_prog',JSON.stringify(PROG));localStorage.setItem('hm_inv',JSON.stringify(INV))}catch(e){}
@@ -7005,6 +7628,26 @@ button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;
 .domfc:not(:disabled):active{transform:scale(.94)}
 .banner .box{width:100%}.banner img{width:100%;height:auto;max-height:62cqh;object-fit:cover;object-position:50% 20%;margin-bottom:.6cqw;display:block}
 .banner .kan{font-size:clamp(26px,7cqw,80px)}.banner .kan:empty,.banner .eng:empty{display:none}.banner .kor{font-size:clamp(14px,2.6cqw,28px);margin-top:.2cqw}.banner .eng{font-size:clamp(8px,1cqw,12px);margin-top:.3cqw}
+/* ── 온리 원 영역: 흑백 / 혈야+다크매터: 검붉은 / 세 영역 공명 ── */
+.tbroot.dom-mono #bg{filter:grayscale(1) brightness(.6);opacity:.35}
+.tbroot.dom-mono .stage{filter:grayscale(1) contrast(1.12)}
+.tbroot.dom-mono .stage .domtint{opacity:1;background:radial-gradient(ellipse at 50% 55%,#ffffff18 0,#00000090 100%)}
+.tbroot.dom-crimson #bg{filter:grayscale(.7) sepia(1) saturate(3) hue-rotate(-50deg) brightness(.45);opacity:.6}
+.tbroot.dom-crimson .stage{filter:saturate(.35) contrast(1.15)}
+.tbroot.dom-crimson .stage .domtint{opacity:1;background:radial-gradient(ellipse at 50% 55%,#5a000c90 0,#1a0004d8 100%)}
+.tbroot.dom-monomoon #bg{background-image:url(img/dombg.webp);filter:grayscale(1);opacity:.5}
+.tbroot.dom-monomoon .stage{filter:grayscale(1) contrast(1.1)}
+.tbroot.dom-monomoon .stage .domtint{opacity:1;background:url(img/dombg.webp) center 60%/cover;filter:grayscale(1);mix-blend-mode:luminosity}
+.tbroot.dom-trinity #bg{background-image:url(img/dombg.webp);filter:sepia(.6) saturate(3) hue-rotate(-40deg) brightness(.7);opacity:.6}
+.tbroot.dom-trinity .stage{filter:contrast(1.15) saturate(.8)}
+.tbroot.dom-trinity .stage .domtint{opacity:1;background:linear-gradient(180deg,#5a001090,#0a0612c0),url(img/dombg.webp) center 60%/cover}
+.tbroot.dom-trinity .stage .domtint::after{content:"";position:absolute;inset:-40%;background:conic-gradient(from 0deg,#ff1c3a30,#ffffff28,#c9b6ff30,#ff1c3a30,#ffffff28,#c9b6ff30,#ff1c3a30);animation:spin 9s linear infinite;mix-blend-mode:screen}
+.tbroot.dom-trinity .stage::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 6cqw #ff1c3a60,inset 0 0 12cqw #c9b6ff40;animation:triPulse 2.2s ease-in-out infinite alternate}
+@keyframes triPulse{to{box-shadow:inset 0 0 9cqw #ffffff50,inset 0 0 16cqw #ff1c3a50}}
+.coex.tri .cx-m{font-family:"Jua",sans-serif;font-size:clamp(18px,3cqw,32px);color:#e8e8f0;text-shadow:0 0 12px #fff,0 2px 0 #000;position:relative;z-index:2;animation:cxIn .6s .2s cubic-bezier(.2,.8,.3,1) backwards}
+.coex.tri .cx-t{text-shadow:0 0 18px #fff,0 0 36px #ff1c3a,0 0 54px #c9b6ff}
+.coex.tri .cx-bg::before{background:conic-gradient(from 0deg,#c9b6ff50,#ff1c3a50,#ffffff50,#c9b6ff50,#ff1c3a50,#ffffff50,#c9b6ff50);animation:spin 3s linear infinite}
+.banner.mono .kan{text-shadow:0 0 30px #fff}.banner.mono .kor{color:#e8e8f0;text-shadow:0 0 10px #fff}.banner.mono img{filter:grayscale(1) contrast(1.1)}
 .tbroot,.tbroot *{-webkit-tap-highlight-color:rgba(0,0,0,0)!important;-webkit-touch-callout:none}
 .tbroot{user-select:none;-webkit-user-select:none}
 .tbroot button:focus{outline:none}
@@ -7043,21 +7686,31 @@ const TH={
     domain:{name:'흑월의 정원',fx:'inf',fxName:'무한 일섬'}},
   yuria:{fp:'50% 50%',face:'img/yuria_face_sq.webp',skill:{name:'적안섬광',el:'fire',pow:78,hits:1,acc:100,gim:'ult+',vfx:'flashPoint'},
     ult:{name:'혈인 일섬',el:'dark',els:['fire','dark'],pow:165,hits:4,acc:100,gim:'bleed',vfx:'bloodBrush',vid:'yuria_ult.mp4'},
-    domain:{name:'혈야의 영지',fx:'ultfin',fxName:'궁극기 마무리'}}};
+    domain:{name:'혈야의 영지',fx:'ultfin',fxName:'궁극기 마무리'}},
+  one:{fp:'50% 50%',skill:{name:'다크매터',el:'dark',els:['dark','water'],pow:70,hits:1,acc:100,gim:'shield',vfx:'darkburst'},
+    ult:{name:'다크매터 폭발',el:'dark',els:['dark','water'],pow:150,hits:1,acc:100,gim:'def-',vfx:'darkburst',big:true,vid:'one_ult.mp4'},
+    domain:{name:'여왕의 다크매터',fx:'heal',fxName:'여왕의 가호'}}};
 const SFXMAP={slash:'slash_light',combo:'combo5',brk:'break',domain:'domain_ping'};
 function sfx(k,vol=.9){try{AUD.sfx(SFXMAP[k]||k,{vol})}catch(e){}}
 let running=false,paused=false,runId=0,domLock=false;
 const foe=()=>B.team[B.idx],alive=u=>u.cur>0,aliveH=()=>B.heroes.filter(alive);
-const domOn=()=>!!B.domain,coexist=()=>!!(B.domain&&B.coexist);
-const addDom=(v,u)=>{const us=u?[u]:aliveH();us.forEach(x=>{if(B.domain&&B.domain.id===x.id)return;x.dom=Math.min(100,x.dom+v)})};
+/* 영역: B.doms={yuria:{turns},one:{turns,stored}} · B.rodIn=로스바이세 영역 합류(공존) */
+const domCount=()=>Object.keys(B.doms||{}).length+(B.rodIn?1:0);
+const domOn=()=>domCount()>0,coexist=()=>domCount()>=2,trinity=()=>domCount()>=3;
+const addDom=(v,u)=>{const us=u?[u]:aliveH();us.forEach(x=>{if(B.doms&&B.doms[x.id])return;x.dom=Math.min(100,x.dom+v)})};
+const addDealt=v=>{B.dealt+=v;if(B.doms&&B.doms.one)B.doms.one.stored+=v*.1};
+function domTint(){const d=B.doms||{},y=!!d.yuria,o=!!d.one,r=!!B.rodIn;let c='';
+  if(r&&y&&o)c='dom-trinity';else if(r&&y)c='dom-coexist';else if(r&&o)c='dom-monomoon';else if(y&&o)c='dom-crimson';else if(y)c='dom-blood';else if(o)c='dom-mono';
+  tbroot.className='tbroot'+(c?' '+c:'')}
+const DOM_NAMES={rod:'흑월의 정원',yuria:'혈야의 영지',one:'여왕의 다크매터'};
 /* ===== 데미지 (텍스트 RPG + 원래 게임의 시그니처 보정) ===== */
 function damage(att,def,m,o={}){
   const st=s=>s>=0?(2+s)/2:2/(2-s),A=att.atk*st(att.stage.atk||0),D=def.def*st(def.stage.def||0);
   const base=((2*att.lv/5+2)*m.pow*A/D)/50+2;
   const pcrit=(att.id==='yuria'&&att.cur<=att.hp*.5?15:0)+(att.permCrit||0);
   const e=moveEff(m,def.els),stab=(m.els?att.els.some(x=>m.els.includes(x)):att.els.includes(m.el))?1.5:1,crit=Math.random()*100<(att.crit||5)+(o.crit||0)+pcrit;
-  const cx=coexist(),dm=domOn()?(att.hero?(cx?1.45:1.3):def.hero?(cx?.6:.7):1):1,bk=(!def.hero&&def.broken>0)?1.15:1;
-  const sg=(att.hero&&((att.id==='rod'&&hasSig()&&(m.el==='light'||m.el==='dark'))||(att.id==='yuria'&&hasSigY()&&(m.el==='fire'||m.el==='dark'))))?1.1:1;
+  const cx=coexist(),tri=trinity(),dm=domOn()?(att.hero?(tri?1.6:cx?1.45:1.3):def.hero?(tri?.5:cx?.6:.7):1):1,bk=(!def.hero&&def.broken>0)?1.15:1;
+  const sg=(att.hero&&((att.id==='rod'&&hasSig()&&(m.el==='light'||m.el==='dark'))||(att.id==='yuria'&&hasSigY()&&(m.el==='fire'||m.el==='dark'))||(att.id==='one'&&window.hasSigO&&hasSigO()&&(m.el==='dark'||m.el==='water'))))?1.1:1;
   const pb=(att.id==='yuria'&&def.bleed>0)?1.15:1,pd=(def.hero&&def.id==='rod'&&domOn())?.9:1;
   let dmg=base*stab*e*(crit?(att.cdmg||150)/100:1)*dm*sg*pb*pd*bk*(.85+Math.random()*.15);let shielded=false;if(def.hero&&def.shield>0){dmg*=.5;shielded=true}
   return{dmg:Math.max(1,Math.round(dmg)),e,crit,shielded}}
@@ -7070,12 +7723,12 @@ function render(){
   if(!B)return;
   $('tTurn').textContent=B.turn;
   $('heroes').innerHTML=B.heroes.map(u=>{const r=Math.max(0,u.cur/u.hp);const tags=[];
-    if(B.domain&&B.domain.id===u.id)tags.push(`<span class="tag">${u.H.domain.fxName}</span>`);if(coexist())tags.push('<span class="tag gold">領域共存</span>');if(u.stage.atk>0)tags.push(`<span class="tag">공격 +${u.stage.atk}</span>`);if(u.stage.def>0)tags.push(`<span class="tag">방어 +${u.stage.def}</span>`);if(u.shield)tags.push('<span class="tag">결계</span>');if(u.haste)tags.push('<span class="tag">선공</span>');if(u.awake)tags.push('<span class="tag gold">흑월 각성</span>');if(u.bleed>0)tags.push(`<span class="tag warn">출혈 ${u.bleed}</span>`);
+    if(B.doms&&B.doms[u.id])tags.push(`<span class="tag">${u.H.domain.fxName} ${B.doms[u.id].turns}턴</span>`);if(trinity())tags.push('<span class="tag gold">三域共鳴</span>');else if(coexist())tags.push('<span class="tag gold">領域共存</span>');if(u.stage.atk>0)tags.push(`<span class="tag">공격 +${u.stage.atk}</span>`);if(u.stage.def>0)tags.push(`<span class="tag">방어 +${u.stage.def}</span>`);if(u.shield)tags.push('<span class="tag">결계</span>');if(u.haste)tags.push('<span class="tag">선공</span>');if(u.awake)tags.push('<span class="tag gold">흑월 각성</span>');if(u.bleed>0)tags.push(`<span class="tag warn">출혈 ${u.bleed}</span>`);
     return `<div class="unit${B.actId===u.id?' act':''}${alive(u)?'':' down'}" id="u_${u.id}"><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><div class="nm">${elsOf(u)} ${u.name}<small>Lv.${u.lv}</small></div>
       <div class="bar hp${r<=.2?' low':r<=.5?' mid':''}"><i style="width:${r*100}%"></i></div><div class="sub"><span>HP</span><span>${Math.max(0,u.cur)}/${u.hp}</span></div>
       <div class="bar ult${u.ult>=100?' ready':''}"><i style="width:${u.ult}%"></i></div><div class="sub"><span>${u.H.ult.name}</span><span>${u.ult>=100?'READY':Math.floor(u.ult)+'%'}</span></div><div class="tags">${tags.join('')}</div></div>`}).concat(Array.from({length:Math.max(0,4-B.heroes.length)},()=>'<div class="unit empty"><span class="ph"></span><div class="nm">빈 자리</div></div>')).join('');
-  $('domDock').innerHTML=B.heroes.map(u=>{const on=B.domain&&B.domain.id===u.id,ready=u.dom>=100&&!B.over&&alive(u)&&!on,dis=B.over||!alive(u)||u.dom<100||on||domLock||!!B.domReq;
-    return `<button class="domfc${on?' active':ready?' ready':''}${alive(u)?'':' down'}" data-dom="${u.id}" ${dis?'disabled':''} style="--g:${on?100:Math.min(100,u.dom)}%" aria-label="${u.name} 영역 전개"><span class="fring"></span><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><span class="lbl">${B.domReq===u.id?'대기…':on?`${B.domain.turns}턴`:u.dom>=100?'READY':Math.floor(u.dom)+'%'}</span><span class="dn">${u.H.domain.name}</span></button>`}).join('');
+  $('domDock').innerHTML=B.heroes.map(u=>{const on=!!(B.doms&&B.doms[u.id]),ready=u.dom>=100&&!B.over&&alive(u)&&!on,dis=B.over||!alive(u)||u.dom<100||on||domLock||!!B.domReq;
+    return `<button class="domfc${on?' active':ready?' ready':''}${alive(u)?'':' down'}" data-dom="${u.id}" ${dis?'disabled':''} style="--g:${on?100:Math.min(100,u.dom)}%" aria-label="${u.name} 영역 전개"><span class="fring"></span><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><span class="lbl">${B.domReq===u.id?'대기…':on?`${B.doms[u.id].turns}턴`:u.dom>=100?'READY':Math.floor(u.dom)+'%'}</span><span class="dn">${u.H.domain.name}</span></button>`}).join('');
   $('domDock').querySelectorAll('.domfc').forEach(b=>b.onclick=()=>useDomain(b.dataset.dom));
   renderStage();
 }
@@ -7103,9 +7756,13 @@ let effects=[];
 function fx(dur,draw,delay=0){return new Promise(res=>{effects.push({t0:performance.now()+delay,dur,draw,res});kick()})}
 function vloop(now){const dt=Math.min(.05,(now-flast)/1000);flast=now;fcx.clearRect(0,0,FW,FH);
   effects=effects.filter(e=>{const p=(now-e.t0)/(e.dur/SPEED);if(p<0)return true;if(p>=1){e.res();return false}e.draw(fcx,p);return true});
-  const ls=window.LightSlash&&LightSlash.active();
-  if(ls){LightSlash.draw(fcx);LightSlash.update(dt);const [sx,sy]=LightSlash.shake();stageEl.style.translate=`${sx.toFixed(1)}px ${sy.toFixed(1)}px`}else stageEl.style.translate='';
-  if(ls||effects.length)fraf=requestAnimationFrame(vloop);else{fraf=0;fcx.clearRect(0,0,FW,FH)}}
+  const ls=window.LightSlash&&LightSlash.active(),db=window.DarkBurst&&DarkBurst.active(),ds=window.DarkStorm&&DarkStorm.active();
+  let sx=0,sy=0;
+  if(ls){LightSlash.draw(fcx);LightSlash.update(dt);const v=LightSlash.shake();sx+=v[0];sy+=v[1]}
+  if(ds){DarkStorm.draw(fcx);DarkStorm.update(dt*SPEED);const v=DarkStorm.shake();sx+=v[0];sy+=v[1]}
+  if(db){DarkBurst.draw(fcx);DarkBurst.update(dt*SPEED);const v=DarkBurst.shake();sx+=v[0];sy+=v[1]}
+  stageEl.style.translate=(ls||db||ds)?`${sx.toFixed(1)}px ${sy.toFixed(1)}px`:'';
+  if(ls||db||ds||effects.length)fraf=requestAnimationFrame(vloop);else{fraf=0;fcx.clearRect(0,0,FW,FH)}}
 /* 격파 시 가루가 되어 흩어지는 연출 */
 async function vfxDust(img){
   if(!img)return;img.classList.add('dust');
@@ -7128,6 +7785,19 @@ function foeBox(){const s=stageEl.getBoundingClientRect(),r=sprite.getBoundingCl
 function heroBox(){return{x:FW*.12,y:FH*.72,w:FW*.25,h:FH*.6}}
 function vfxLightSlash(onHit,lite){return new Promise(res=>{const t=foeBox();if(!window.LightSlash){onHit();return res()}
   LightSlash.spawn(t.x+(lite?(Math.random()-.5)*t.w*.2:0),t.y+(lite?(Math.random()-.5)*t.h*.2:0),{scale:Math.min(FW,FH)/700*(lite?.75:.85),angle:lite&&Math.random()<.5?2.6:-.35,screen:!lite&&!window.LITE,chroma:!lite&&!window.LITE,lite,onHit:()=>{onHit();setTimeout(res,lite?150:450/SPEED)}});kick()})}
+/* 온리 원 — 다크매터 (DarkBurst) : 폭발 순간 피해 */
+function vfxDarkBurst(onBurst,big){return new Promise(res=>{const t=foeBox();if(!window.DarkBurst){onBurst();return res()}
+  const sc=Math.min(FW,FH)/700*(big?1.05:.8);sfx('rift',big?1:.8);
+  DarkBurst.spawn(t.x,t.y,{scale:sc,radius:big?360:260,screen:!window.LITE,onCompress:()=>{sfx('stab',.5)},onBurst:()=>{sfx('brk',.9);onBurst();setTimeout(res,big?900/SPEED:650/SPEED)}});kick()})}
+/* 온리 원 — 영역 종료: 암흑 폭풍 (DarkStorm) : 저장 피해를 6회에 나눠 적중 */
+function vfxDarkStorm(total){return new Promise(res=>{const f=foe();if(!alive(f)||!window.DarkStorm){if(alive(f)){f.cur=Math.max(0,f.cur-total);addDealt(total);render()}return res()}
+  const s=stageEl.getBoundingClientRect(),r=sprite.getBoundingClientRect();const x=r.left-s.left+r.width/2,y=r.top-s.top+r.height*.96;
+  const N=6;let done=0,sum=0;const parts=Array.from({length:N},(_,i)=>i===N-1?total-Math.round(total/N)*(N-1):Math.round(total/N));
+  sfx('rift',.9);
+  DarkStorm.spawn(x,y,{scale:Math.min(FW,FH)/700*.95,height:r.height*.9,screen:!window.LITE,onErupt:()=>{sfx('brk',.8);flashFx()},
+    onTick:(fx,i)=>{if(i>N||!alive(f))return;const part=parts[i-1];f.cur=Math.max(0,f.cur-part);B.dealt+=part;sum+=part;sfx('hit',.5);foeSprite('hit',300);popFx(part,'');render();
+      log(`<strong>암흑 폭풍 ×${i}</strong> — <em>${f.short}</em>에게 <i>${part}</i>의 피해!`,'hero');if(++done>=N||!alive(f)){setTimeout(res,600/SPEED)}},
+    onEnd:()=>{res()}});kick()})}
 function vfxSkill(id,onHit){const S=window.SkillVFX&&SkillVFX[id];if(!S){onHit({index:0,total:1,weight:1});return sleep(500)}const h=heroBox(),t=foeBox();
   return S.play(skillCv,{from:{x:h.x+h.w*.1,y:h.y-h.h*.1},to:{x:t.x,y:t.y},shakeEl:stageEl,sceneEl:null,speed:SPEED,onHit})}
 function playUltVideo(src){return new Promise(res=>{const o=document.createElement('div');o.className='ultv';o.innerHTML='<video playsinline preload="auto"></video><button class="skip" type="button">건너뛰기 ▸</button>';const v=o.querySelector('video');let done=false;
@@ -7143,7 +7813,7 @@ function adapt(){
   B.team.forEach(f=>{f.hero=false;f.rage=0;f.short=f.short||f.name;const im=f.img;const key=f.key;
     if(f.boss&&key==='boss_jester'){f.imgSt=st=>st==='death'?'foes/boss_jester_normal.webp':`foes/boss_jester_${st}.webp`}else if(typeof im==='function')f.imgSt=im;else f.imgSt=st=>`foes/${key}_${st}.webp`;
     f.img=f.imgSt('normal')});
-  B.actId=null;B.order=null;B.oi=0;B.domain=null;B.coexist=false;B.domReq=null;B._fainting=false;
+  B.actId=null;B.order=null;B.oi=0;B.doms={};B.rodIn=false;B.domReq=null;B._fainting=false;
 }
 async function waitPause(){while(paused)await new Promise(r=>setTimeout(r,120))}
 function roundOrder(){const us=[...aliveH().map(u=>({u,p:u.haste?1:0,s:u.spd,h:1})),{u:foe(),p:0,s:foe().spd,h:0}];us.sort((a,b)=>b.p-a.p||b.s-a.s||b.h-a.h);us.forEach(x=>x.u.haste=0);return us.map(x=>x.u)}
@@ -7172,7 +7842,7 @@ async function start(region){
 }
 async function newRound(){
   B.turn++;
-  if(B.domain){await domainTick();if(B.over)return false;if(!alive(foe()))return true}
+  if(domCount()){await domainTick();if(B.over)return false;if(!alive(foe()))return true}
   aliveH().forEach(u=>{u.ult=Math.min(100,u.ult+5);addDom(5,u)});
   B.order=roundOrder();B.oi=0;render();
   if(B.turn>1){log(`<strong>${B.turn}턴</strong> — ${B.order[0].hero?B.order[0].name:'상대'}이(가) 먼저 움직인다.`,'sys');await sleep(400)}
@@ -7188,9 +7858,10 @@ async function heroMove(h,m,o={}){
   log(`<strong>${h.name}</strong>의 <strong>${m.name}</strong>!`,'hero');await sleep(o.lite?120:450);
   if(Math.random()*100>=m.acc){log('그러나 공격은 빗나갔다!','sys');await sleep(350);return}
   const r=damage(h,f,m,o);const hits=m.hits||1;let dealt=0,parts=[];
-  const applyPart=(part,last)=>{if(!alive(f))return;sfx('hit',last?.7:.45);f.cur=Math.max(0,f.cur-part);B.dealt+=part;parts.push(part);foeSprite('hit',520);popFx((r.crit&&last?'<small>CRITICAL</small>':'')+part,r.crit&&last?'crit':'');if(last&&(o.ult||r.crit))shakeFx();render()};
+  const applyPart=(part,last)=>{if(!alive(f))return;sfx('hit',last?.7:.45);f.cur=Math.max(0,f.cur-part);addDealt(part);parts.push(part);foeSprite('hit',520);popFx((r.crit&&last?'<small>CRITICAL</small>':'')+part,r.crit&&last?'crit':'');if(last&&(o.ult||r.crit))shakeFx();render()};
   const apply=()=>{for(let i=0;i<hits;i++){const part=i===hits-1?r.dmg-dealt:Math.round(r.dmg/hits);dealt+=part;applyPart(part,i===hits-1)}};
   if(m.vfx==='light'){sfx('slash',o.lite?.6:.9);await vfxLightSlash(apply,o.lite)}
+  else if(m.vfx==='darkburst'){await vfxDarkBurst(apply,!!m.big)}
   else if(m.vfx&&window.SkillVFX&&SkillVFX[m.vfx]){sfx(m.vfx==='bloodBrush'?'ult_blood':m.vfx==='flashPoint'?'flash':'combo');const def=SkillVFX[m.vfx].def,ws=def.weights||def.hits.map(()=>1),sum=ws.reduce((a,b)=>a+b,0);
     await vfxSkill(m.vfx,hh=>{const last=hh.index===hh.total-1,part=last?Math.max(0,r.dmg-dealt):Math.round(r.dmg*hh.weight/sum);dealt+=part;applyPart(part,last)})}
   else{slashFx(ELC[m.els?m.els[0]:m.el]);if(hits>1)for(let i=1;i<hits;i++)setTimeout(()=>{if(!B.over)slashFx(ELC[m.els?m.els[1]:m.el],-60+Math.random()*120)},i*110/SPEED);apply();if(o.ult){flashFx();ringFx()}}
@@ -7205,59 +7876,86 @@ function gimmick(h,m){const g=m.gim;if(!g)return;
   if(g==='haste'){h.haste=1;log(`<strong>${h.name}</strong>이(가) 다음 턴 가장 먼저 움직인다.`,'sys')}
   else if(g==='ult+'){h.ult=Math.min(100,h.ult+15)}
   else if(g==='dom+'){addDom(30,h)}
-  else if(g==='bleed'&&alive(foe())){foe().bleed=2;log(`<em>${foe().short}</em>은(는) 출혈 상태가 되었다!`,'sys')}
+  else if(g==='bleed'&&alive(foe())){foe().bleed=2;log(`<em>${foe().short}</em>은(는) 출혈 상태가 되었다!</span>`.replace('</span>',''),'sys')}
+  else if(g==='shield'){const n=(h.id==='one'&&window.hasSigO&&hasSigO())?2:1;aliveH().forEach(u=>{u.shield=Math.max(u.shield||0,n)});log(`암흑물질이 아군을 감쌌다 — <strong>아군 전체 실드</strong> (다음 피격 ${n}회 50% 감경).`,'sys')}
+  else if(g==='def-'&&alive(foe())){const f=foe();f.stage.def=Math.max(-6,(f.stage.def||0)-2);log(`<em>${f.short}</em>의 방어가 크게 떨어졌다! (방어 -2)`,'sys')}
   render()}
 function breakHit(f,amt,e){if(!f.brkMax||f.broken>0||e<=1)return;f.brk=Math.max(0,f.brk-amt);if(f.brk<=0){f.broken=1;sfx('brk');flashFx();shakeFx();log(`<strong>BREAK!</strong> <em>${f.short}</em>의 자세가 무너졌다! (받는 피해 +15% · 1턴 행동 불가)`,'ult')}}
 async function heroUlt(h,free){
   const f=foe(),m=h.H.ult;if(!free)h.ult=0;render();
-  log(`<strong>${h.name}</strong>의 궁극기 — <strong>${m.name}</strong>!`,'ult');sfx(h.id==='yuria'?'ult_blood':'ult_moon');
-  const ok=await playUltVideo(m.vid);if(!ok)await banner(m.name,h.name,'ULTIMATE',h.id==='yuria'?'blood ult':'ult',h.H.img,1200);if(B.over||!alive(foe()))return;
+  log(`<strong>${h.name}</strong>의 궁극기 — <strong>${m.name}</strong>!`,'ult');sfx(h.id==='yuria'?'ult_blood':h.id==='one'?'boss_ult':'ult_moon');
+  const ok=await playUltVideo(m.vid);if(!ok)await banner(m.name,h.name,'ULTIMATE',h.id==='yuria'?'blood ult':h.id==='one'?'mono ult':'ult',h.H.img,1200);if(B.over||!alive(foe()))return;
   if(h.id==='rod'&&!h.awake){h.awake=true;log('<strong>흑월 각성</strong> — 로스바이세의 모습이 변했다. (궁극기 게이지 획득 증가)','ult')}
   await heroMove(h,m,{ult:true,free:true});addDom(15,h);render();
 }
 /* 사용자가 버튼으로 발동하는 영역 전개 (캐릭터별) */
-function useDomain(id){if(!B||B.over||domLock||B.domReq)return;const h=B.heroes.find(u=>u.id===id);if(!h||!alive(h)||h.dom<100||(B.domain&&B.domain.id===id))return;B.domReq=id;render()}
+function useDomain(id){if(!B||B.over||domLock||B.domReq)return;const h=B.heroes.find(u=>u.id===id);if(!h||!alive(h)||h.dom<100||(B.doms&&B.doms[id]))return;B.domReq=id;render()}
 async function runDomain(id){
   const h=B.heroes.find(u=>u.id===id);if(!h||!alive(h)||h.dom<100)return;
   domLock=true;h.dom=0;render();
   try{
     if(id==='rod'){
-      const coex=B.domain&&B.domain.id==='yuria';
+      const others=Object.keys(B.doms);
       sfx('domain');log(`<strong>영역 전개 — 흑월의 정원.</strong>`,'domain');
       await banner('領域展開','흑월의 정원','DOMAIN ✦ EXPANSION','',h.H.cutin,1500);
-      if(coex){B.coexist=true;tbroot.className='tbroot dom-coexist';sfx('domain',.7);await showCoexist();log(`<strong>영역 공존!</strong> <em>혈야의 영지</em> ✦ <em>흑월의 정원</em> — 영역이 유지되는 동안 공격 ×1.45, 받는 피해 ×0.6.`,'domain');render()}
+      if(others.length){B.rodIn=true;domTint();sfx('domain',.7);
+        if(others.length>=2){await showTrinity();log(`<strong>三域共鳴!</strong> <em>혈야의 영지</em> ✦ <em>여왕의 다크매터</em> ✦ <em>흑월의 정원</em> — 세 영역이 공명한다. 공격 ×1.6, 받는 피해 ×0.5.`,'domain')}
+        else{await showCoexist(DOM_NAMES[others[0]],'흑월의 정원');log(`<strong>영역 공존!</strong> <em>${DOM_NAMES[others[0]]}</em> ✦ <em>흑월의 정원</em> — 영역이 유지되는 동안 공격 ×1.45, 받는 피해 ×0.6.`,'domain')}
+        render()}
       log(`검은 손들이 전장을 감쌌다 — <strong>일섬 7연속</strong>!`,'domain');
       await rodBurst(h,7);
       if(!B.over&&!alive(foe())){domLock=false;await foeFaint()}
-    }else{
+    }else if(id==='yuria'){
       sfx('domain');log(`<strong>영역 전개 — 혈야의 영지.</strong>`,'domain');
       await banner('','혈야의 영지','','blood',h.H.cutin,1500);
-      B.domain={id:'yuria',name:h.H.domain.name,turns:3};tbroot.className='tbroot dom-blood';
+      B.doms.yuria={turns:3};domTint();await afterDomainOpen('yuria');
       log(`핏빛 안개가 전장을 뒤덮었다. <strong>3턴</strong> 동안 공격 ×1.3, 받는 피해 ×0.7 · 매 턴 적에게 출혈 · 영역이 닫힐 때 <strong>혈인 일섬</strong>.`,'domain');
       const f=foe();if(alive(f)){f.bleed=Math.max(f.bleed,2);log(`<em>${f.short}</em>은(는) 출혈 상태가 되었다!`,'sys')}
+    }else if(id==='one'){
+      sfx('domain');log(`<strong>영역 전개 — 여왕의 다크매터.</strong>`,'domain');
+      await banner('','여왕의 다크매터','','mono',h.H.cutin,1500);
+      B.doms.one={turns:3,stored:0};domTint();await afterDomainOpen('one');
+      log(`세상의 색이 빠져나갔다. <strong>3턴</strong> 동안 공격 ×1.3, 받는 피해 ×0.7 · 매 턴 아군 전체 HP 8% 회복 · 아군이 준 피해의 <strong>10%</strong>를 모아 영역이 닫힐 때 <strong>암흑 폭풍</strong>으로 되돌린다.`,'domain');
+      healAll(.08,'여왕의 가호');
     }
   }finally{domLock=false;render()}
 }
+/* 두 번째 3턴 영역이 열렸을 때(혈야+다크매터) 겹침 연출 */
+async function afterDomainOpen(id){const o=Object.keys(B.doms).filter(k=>k!==id);if(!o.length)return;
+  if(B.rodIn&&o.length>=1){await showTrinity();log(`<strong>三域共鳴!</strong> 세 영역이 공명한다. 공격 ×1.6, 받는 피해 ×0.5.`,'domain')}
+  else{sfx('domain',.7);await showCoexist(DOM_NAMES[o[0]],DOM_NAMES[id]);log(`<strong>영역 공존!</strong> <em>${DOM_NAMES[o[0]]}</em> ✦ <em>${DOM_NAMES[id]}</em> — 검붉은 세계. 공격 ×1.45, 받는 피해 ×0.6.`,'domain')}}
+function healAll(pct,why){const parts=[];aliveH().forEach(u=>{const bonus=(u.id==='one')?1.2:1;const v=Math.min(u.hp-u.cur,Math.round(u.hp*pct*bonus));if(v>0){u.cur+=v;parts.push(`<strong>${u.name}</strong> +${v}`)}});if(parts.length)log(`${why} — ${parts.join(' · ')} 회복.`,'sys');render()}
 async function rodBurst(h,n){
   const f=foe();if(!alive(f))return;const m={...h.H.skill,pow:Math.round(h.H.skill.pow*.5)};let fired=0,sum=0;
   await new Promise(res=>{for(let i=0;i<n;i++){setTimeout(()=>{if(B.over||!alive(f)){if(++fired>=n)res();return}const t=foeBox();sfx('slash',.55);
       LightSlash.spawn(t.x+(Math.random()-.5)*t.w*.25,t.y+(Math.random()-.5)*t.h*.25,{scale:Math.min(FW,FH)/700*.75,angle:i%2?2.6:-.35,screen:false,chroma:false,lite:true,onHit:()=>{
-        if(B.over||!alive(f)){if(++fired>=n)res();return}const r=damage(h,f,m);f.cur=Math.max(0,f.cur-r.dmg);B.dealt+=r.dmg;sum+=r.dmg;h.ult=Math.min(100,h.ult+6);addDom(4,h);breakHit(f,8,r.e);sfx('hit',.45);foeSprite('hit',400);popFx((r.crit?'<small>CRITICAL</small>':'')+r.dmg,r.crit?'crit':'');render();
+        if(B.over||!alive(f)){if(++fired>=n)res();return}const r=damage(h,f,m);f.cur=Math.max(0,f.cur-r.dmg);addDealt(r.dmg);sum+=r.dmg;h.ult=Math.min(100,h.ult+6);addDom(4,h);breakHit(f,8,r.e);sfx('hit',.45);foeSprite('hit',400);popFx((r.crit?'<small>CRITICAL</small>':'')+r.dmg,r.crit?'crit':'');render();
         log(`<strong>일섬 ×${i+1}</strong> — <em>${f.short}</em>에게 <i>${r.dmg}</i>의 피해!${r.crit?' <span style="color:#ffe39a">급소!</span>':''}`,r.crit?'crit hero':'hero');
         if(++fired>=n)res()}});kick()},i*90/SPEED)}});
   log(`일섬 7연속 — 총 <i>${sum}</i>의 피해!`,'ult');h.haste=1;render();await sleep(300);
 }
-async function showCoexist(){const d=document.createElement('div');d.className='coex';d.innerHTML=`<div class="cx-bg"></div><div class="cx-a">혈야의 영지</div><div class="cx-x">✦</div><div class="cx-b">흑월의 정원</div><div class="cx-t">領域共存</div><div class="cx-s">DOMAIN ✦ COEXISTENCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();await sleep(2100);d.classList.add('out');await sleep(400);d.remove()}
+async function showCoexist(a='혈야의 영지',b='흑월의 정원'){const d=document.createElement('div');d.className='coex';d.innerHTML=`<div class="cx-bg"></div><div class="cx-a">${a}</div><div class="cx-x">✦</div><div class="cx-b">${b}</div><div class="cx-t">領域共存</div><div class="cx-s">DOMAIN ✦ COEXISTENCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();await sleep(2100);d.classList.add('out');await sleep(400);d.remove()}
+async function showTrinity(){const d=document.createElement('div');d.className='coex tri';d.innerHTML=`<div class="cx-bg"></div><div class="cx-a">혈야의 영지</div><div class="cx-x">✦</div><div class="cx-m">여왕의 다크매터</div><div class="cx-x">✦</div><div class="cx-b">흑월의 정원</div><div class="cx-t">三域共鳴</div><div class="cx-s">TRINITY ✦ RESONANCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();sfx('boss_ult',.8);await sleep(2600);d.classList.add('out');await sleep(400);d.remove()}
 async function domainTick(){
-  const d=B.domain;if(!d)return;d.turns--;
-  if(d.turns>0){const f=foe();if(alive(f)){f.bleed=Math.max(f.bleed,2);log(`혈야의 영지 — <em>${f.short}</em>에게 출혈이 번진다. (${d.turns}턴 남음)`,'domain')}render();return}
-  await endDomain();
+  for(const id of Object.keys(B.doms)){const d=B.doms[id];if(!d)continue;d.turns--;
+    if(d.turns>0){
+      if(id==='yuria'){const f=foe();if(alive(f)){f.bleed=Math.max(f.bleed,2);log(`혈야의 영지 — <em>${f.short}</em>에게 출혈이 번진다. (${d.turns}턴 남음)`,'domain')}}
+      else if(id==='one'){healAll(.08,`여왕의 다크매터 (${d.turns}턴 남음 · 저장 피해 ${Math.round(d.stored)})`)}
+      render()}
+    else{await endDomain(id);if(B.over||!alive(foe()))return}
+  }
 }
-async function endDomain(){
-  const d=B.domain;if(!d)return;const h=B.heroes.find(u=>u.id===d.id);
-  B.domain=null;B.coexist=false;tbroot.className='tbroot';
-  if(h&&alive(h)&&alive(foe())){log(`영역이 닫힌다 — <strong>${h.name}</strong>의 <strong>${h.H.domain.fxName}</strong>!`,'domain');await sleep(400);await heroUlt(h,true)}
-  else log('영역이 닫혔다.','sys');
+async function endDomain(id){
+  const d=B.doms[id];if(!d)return;const h=B.heroes.find(u=>u.id===id);delete B.doms[id];
+  if(!Object.keys(B.doms).length)B.rodIn=false;domTint();
+  if(id==='yuria'){
+    if(h&&alive(h)&&alive(foe())){log(`영역이 닫힌다 — <strong>${h.name}</strong>의 <strong>${h.H.domain.fxName}</strong>!`,'domain');await sleep(400);await heroUlt(h,true)}
+    else log('혈야의 영지가 닫혔다.','sys');
+  }else if(id==='one'){
+    const dmg=Math.max(1,Math.round(d.stored));
+    if(h&&alive(h)&&alive(foe())){log(`영역이 닫힌다 — <strong>${h.name}</strong>의 <strong>암흑 폭풍</strong>! 모아둔 피해 <i>${dmg}</i>를 되돌린다.`,'domain');await sleep(300);await vfxDarkStorm(dmg)}
+    else log('여왕의 다크매터가 닫혔다.','sys');
+  }
   render();if(!alive(foe()))await foeFaint();
 }
 function pickFoeMove(f,h){
@@ -7279,7 +7977,7 @@ async function foeTurn(f){
   if(m.ult){sfx('boss_ult');await banner('心淵',m.name,'BOSS ✦ SPECIAL','blood',null,1500)}
   foeSprite('attack',900);sfx('foe_magic',m.big||m.ult?1:.75);await sleep(450);
   if(Math.random()*100>=m.acc){log('그러나 공격은 빗나갔다!','sys');await sleep(350);return}
-  const r=damage(f,h,m);if(m.big||m.ult){flashFx();shakeFx()}sfx('hit',.8);h.cur=Math.max(0,h.cur-r.dmg);if(r.shielded)h.shield=0;h.ult=Math.min(100,h.ult+10);addDom(6,h);hitFx('u_'+h.id);
+  const r=damage(f,h,m);if(m.big||m.ult){flashFx();shakeFx()}sfx('hit',.8);h.cur=Math.max(0,h.cur-r.dmg);if(r.shielded){h.shield=Math.max(0,(h.shield||0)-1);const q=B.heroes.find(u=>u.id==='one');if(q&&alive(q))q.ult=Math.min(100,q.ult+10)}h.ult=Math.min(100,h.ult+10);addDom(6,h);hitFx('u_'+h.id);
   log(`<strong>${h.name}</strong>이(가) <i>${r.dmg}</i>의 피해를 입었다!${r.crit?' <span style="color:#ffe39a">급소!</span>':''}${r.e>1?' <span style="color:#ff9ab0">효과가 굉장했다…</span>':r.e<1?' <span style="color:#ffffff80">효과는 별로였다.</span>':''}${r.shielded?' (결계가 피해를 절반으로)':''}`,r.crit?'crit foe':'foe');
   render();await sleep(500);
   if(!alive(h)){log(`<strong>${h.name}</strong>은(는) 쓰러졌다…`,'lose');await sleep(500)}
@@ -7291,11 +7989,11 @@ async function foeFaint(){
   B._fainting=false;
 }
 async function finish(win){
-  if(B.over)return;B.actId=null;B.domain=null;B.coexist=false;tbroot.className='tbroot';
+  if(B.over)return;B.actId=null;B.doms={};B.rodIn=false;tbroot.className='tbroot';
   log(win?`<strong>승리!</strong> ${B.turn}턴 · 준 피해 <i>${B.dealt}</i>`:'<strong>패배…</strong>','win'.replace('win',win?'win':'lose'));
   render();end(win);$('turnTag').textContent='END';
 }
-function stop(){runId++;running=false;tbroot.className='tbroot';tbroot.querySelectorAll('.ultv,.banner,.coex').forEach(e=>e.remove());try{LightSlash.clear()}catch(e){}}
+function stop(){runId++;running=false;tbroot.className='tbroot';tbroot.querySelectorAll('.ultv,.banner,.coex').forEach(e=>e.remove());try{LightSlash.clear()}catch(e){}try{DarkBurst.clear();DarkStorm.clear()}catch(e){}}
 /* ===== 조작 ===== */
 $('bSpeed').onclick=()=>{SPEED=SPEED>=4?1:SPEED*2;localStorage.setItem('hm_tb_speed',SPEED);$('bSpeed').textContent='속도 ×'+SPEED};$('bSpeed').textContent='속도 ×'+SPEED;
 $('bFlee2').onclick=()=>document.getElementById('bFlee').click();
