@@ -6976,7 +6976,11 @@ button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;
 .unit.empty{opacity:.5}.unit.empty .nm{color:var(--dim);font-weight:400}
 .unit>div{width:100%}.unit .nm{justify-content:center;font-size:clamp(8px,.95cqw,13px);gap:.25cqw;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .unit .nm small{font-size:.85em;margin-left:.2cqw}
-.unit .nm .el{width:.85cqw;height:.85cqw;min-width:7px;min-height:7px}
+.unit .nm .el,.unit .nm .dual{width:1.25em;height:1.25em;vertical-align:-.3em;margin-right:.1em}
+.el{display:inline-grid;place-items:center;width:1.2em;height:1.2em;vertical-align:-.25em;border:1px solid #ffffff80}.el svg{width:68%;height:68%;fill:#14111c}
+.dual{display:inline-block;width:1.4em;height:1.4em;vertical-align:-.3em;flex:none;filter:drop-shadow(0 0 4px #a487ff80)}
+.ehud .ebox .nm .el,.ehud .ebox .nm .dual{width:1.3em;height:1.3em}
+.stage .sprite.boss{height:94%;bottom:3%}
 .unit .bar{margin-top:.6cqh;height:1.2cqh;min-height:4px}
 .unit .sub{margin-top:.1cqh}
 .tag{font-size:clamp(6px,.7cqw,9px);padding:0 .45cqw}.tags{justify-content:center;gap:.2cqw;margin-top:.3cqh;flex-wrap:nowrap;overflow:hidden}
@@ -7060,13 +7064,14 @@ function damage(att,def,m,o={}){
 /* ===== 로그/렌더 ===== */
 const logEl=$('log');let logN=0;
 function log(html,cls=''){const p=document.createElement('p');p.className=cls;p.innerHTML=html;logEl.appendChild(p);if(++logN>80){logEl.firstChild.remove()}const c=logEl.parentElement;c.scrollTop=c.scrollHeight}
-const elb=e=>`<span class="el" style="background:${ELC[e]}" title="${ELN[e]}"></span>`;
+const elb=e=>`<span class="el" style="background:${ELC[e]}" title="${ELN[e]}">${window.ELI&&ELI[e]||''}</span>`;
+const elsOf=u=>u.els.length>1?dualEmblem(u.els[0],u.els[1]):elb(u.els[0]);
 function render(){
   if(!B)return;
   $('tTurn').textContent=B.turn;
   $('heroes').innerHTML=B.heroes.map(u=>{const r=Math.max(0,u.cur/u.hp);const tags=[];
     if(B.domain&&B.domain.id===u.id)tags.push(`<span class="tag">${u.H.domain.fxName}</span>`);if(coexist())tags.push('<span class="tag gold">領域共存</span>');if(u.stage.atk>0)tags.push(`<span class="tag">공격 +${u.stage.atk}</span>`);if(u.stage.def>0)tags.push(`<span class="tag">방어 +${u.stage.def}</span>`);if(u.shield)tags.push('<span class="tag">결계</span>');if(u.haste)tags.push('<span class="tag">선공</span>');if(u.awake)tags.push('<span class="tag gold">흑월 각성</span>');if(u.bleed>0)tags.push(`<span class="tag warn">출혈 ${u.bleed}</span>`);
-    return `<div class="unit${B.actId===u.id?' act':''}${alive(u)?'':' down'}" id="u_${u.id}"><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><div class="nm">${elb(u.els[0])}${elb(u.els[1])} ${u.name}<small>Lv.${u.lv}</small></div>
+    return `<div class="unit${B.actId===u.id?' act':''}${alive(u)?'':' down'}" id="u_${u.id}"><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><div class="nm">${elsOf(u)} ${u.name}<small>Lv.${u.lv}</small></div>
       <div class="bar hp${r<=.2?' low':r<=.5?' mid':''}"><i style="width:${r*100}%"></i></div><div class="sub"><span>HP</span><span>${Math.max(0,u.cur)}/${u.hp}</span></div>
       <div class="bar ult${u.ult>=100?' ready':''}"><i style="width:${u.ult}%"></i></div><div class="sub"><span>${u.H.ult.name}</span><span>${u.ult>=100?'READY':Math.floor(u.ult)+'%'}</span></div><div class="tags">${tags.join('')}</div></div>`}).concat(Array.from({length:Math.max(0,4-B.heroes.length)},()=>'<div class="unit empty"><span class="ph"></span><div class="nm">빈 자리</div></div>')).join('');
   $('domDock').innerHTML=B.heroes.map(u=>{const on=B.domain&&B.domain.id===u.id,ready=u.dom>=100&&!B.over&&alive(u)&&!on,dis=B.over||!alive(u)||u.dom<100||on||domLock||!!B.domReq;
@@ -7076,7 +7081,7 @@ function render(){
 }
 function renderStage(){const eb=$('ebox');
   if(B){const f=foe();const cur=Math.max(0,f.cur),segs=Math.ceil(cur/100),segF=segs>0?(cur-(segs-1)*100)/100:0;const tags=[];if(f.broken>0)tags.push('<span class="tag warn">BREAK</span>');if(f.bleed>0)tags.push(`<span class="tag warn">출혈 ${f.bleed}</span>`);if(f.stage.def>0)tags.push(`<span class="tag">방어 +${f.stage.def}</span>`);
-    eb.hidden=false;eb.innerHTML=`<div class="nm">${f.els.map(elb).join('')} ${f.boss?'☠ ':''}${f.name}<small>Lv.${f.lv}</small>${tags.join('')}</div><div style="display:flex;align-items:center"><div class="bar foehp" style="flex:1"><i style="width:${segF*100}%"></i></div><span class="xl">×${segs}</span></div><div class="sub"><span>HP ${cur}/${f.hp}</span><span>${B.team.length>1?`${B.idx+1}/${B.team.length}`:''}</span></div>${f.brkMax?`<div class="bar brk"><i style="width:${Math.max(0,f.brk/f.brkMax*100)}%"></i></div><div class="sub"><span>BREAK</span><span>${f.brk}/${f.brkMax}</span></div>`:''}`;
+    eb.hidden=false;eb.innerHTML=`<div class="nm">${elsOf(f)} ${f.boss?'☠ ':''}${f.name}<small>Lv.${f.lv}</small>${tags.join('')}</div><div style="display:flex;align-items:center"><div class="bar foehp" style="flex:1"><i style="width:${segF*100}%"></i></div><span class="xl">×${segs}</span></div><div class="sub"><span>HP ${cur}/${f.hp}</span><span>${B.team.length>1?`${B.idx+1}/${B.team.length}`:''}</span></div>${f.brkMax?`<div class="bar brk"><i style="width:${Math.max(0,f.brk/f.brkMax*100)}%"></i></div><div class="sub"><span>BREAK</span><span>${f.brk}/${f.brkMax}</span></div>`:''}`;
     $('turnTag').textContent=B.over?'END':B.turn?`${B.turn}T · ${B.actId?(B.actId===f.key?'ENEMY':'ACTION'):'ROUND'}`:'START'}
   else{eb.hidden=true;$('turnTag').textContent='READY'}}
 const sprite=$('sprite');let spT=0;
