@@ -6918,18 +6918,24 @@ button.gold{background:linear-gradient(180deg,#ffe9a3,#f2c75c);color:#1c1a2e;bor
 .tbroot{position:absolute;inset:0;container-type:size;background:var(--bg);color:var(--txt);font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:clamp(11px,1.15cqw,15px);line-height:1.5;overflow:hidden}
 .tbroot *{box-sizing:border-box}
 #bg{position:absolute;inset:0;background:url(img/lobby.webp) center/cover;opacity:.18;filter:saturate(.7);transition:filter .8s,opacity .8s;z-index:0}
-#app{padding:1cqw 1.4cqw;gap:.8cqw;max-width:none}
-.top{gap:.9cqw}.top h1{font-size:clamp(14px,1.9cqw,22px)}.top h1 small{font-size:clamp(8px,.9cqw,11px)}
+#app{padding:.5cqw 1.2cqw .8cqw;gap:.5cqw;max-width:none}
+.top{gap:.8cqw}.top h1{font-size:clamp(13px,1.7cqw,20px);line-height:1.2}.top h1 small{font-size:clamp(8px,.9cqw,11px)}
 .chip{font-size:clamp(9px,1cqw,13px);padding:.3cqw 1cqw}
 button{font-size:clamp(10px,1.05cqw,14px);padding:.45cqw 1.1cqw}
 button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;border-radius:50%;font-size:1.6em;line-height:1;display:grid;place-items:center}
-.stage{height:42cqh}
-.main{gap:.8cqw}.panel{padding:.9cqw;border-radius:1.1cqw}.ptitle{font-size:clamp(8px,.9cqw,11px);margin-bottom:.5cqw}
-.unit{grid-template-columns:4cqw 1fr;gap:.7cqw;padding:.6cqw;margin-bottom:.6cqw}.unit img{width:4cqw;height:4cqw;min-width:32px;min-height:32px}
-.unit .nm{font-size:clamp(10px,1.2cqw,15px)}.sub{font-size:clamp(8px,.9cqw,11px)}.tag{font-size:clamp(7px,.85cqw,10px)}
+.stage{height:50cqh}
+.main{gap:.8cqw;grid-template-columns:44% 1fr}.panel{padding:.7cqw .8cqw;border-radius:1.1cqw}.ptitle{font-size:clamp(7px,.8cqw,10px);margin-bottom:.3cqw}
+/* 파티 카드: 세로형(얼굴 위, 정보 아래) · 최대 4명 가로 배치 */
+#heroes{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.6cqw;height:100%;align-content:start}
+.unit{display:flex;flex-direction:column;align-items:center;text-align:center;grid-template-columns:none;gap:.2cqw;padding:.45cqw .5cqw;margin:0;min-width:0}
+.unit img{width:4.2cqw;height:4.2cqw;min-width:30px;min-height:30px}
+.unit>div{width:100%}.unit .nm{justify-content:center;font-size:clamp(9px,1cqw,13px);gap:.25cqw}.unit .nm small{font-size:.85em}
+.unit .nm .el{width:.9cqw;height:.9cqw;min-width:8px;min-height:8px}
+.sub{font-size:clamp(7px,.8cqw,10px)}.tag{font-size:clamp(7px,.75cqw,9px);padding:0 .5cqw}.tags{justify-content:center;gap:.25cqw}
 .bar{height:.7cqw;min-height:5px}.dombtn{font-size:clamp(9px,1cqw,13px);padding:.5cqw .8cqw}
-.log{font-size:clamp(10px,1.1cqw,14px)}.log p{padding:.45cqw .8cqw}.log p.sys{font-size:.92em}
-.ehud .ebox{padding:.6cqw 1cqw;min-width:min(300px,42%)}.ehud .ebox .nm{font-size:clamp(10px,1.2cqw,15px)}.ehud .xl{font-size:clamp(11px,1.3cqw,16px)}.ehud .turn{font-size:clamp(8px,.95cqw,12px)}
+.log{font-size:clamp(9px,1cqw,13px);gap:.3cqw}.log p{padding:.35cqw .7cqw}.log p.sys{font-size:.92em}
+.ehud .ebox{padding:.6cqw 1cqw;min-width:min(300px,42%)}
+.ehud .ebox .bar{height:.8cqw;min-height:6px}.ehud .ebox .nm{font-size:clamp(10px,1.2cqw,15px)}.ehud .xl{font-size:clamp(11px,1.3cqw,16px)}.ehud .turn{font-size:clamp(8px,.95cqw,12px)}
 .pop{font-size:clamp(20px,2.8cqw,34px)}.pop.crit{font-size:clamp(26px,3.6cqw,44px)}
 /* 영역 전개 버튼: 무대 왼쪽 아래, 캐릭터 얼굴 원형 버튼 */
 .domdock{position:absolute;left:1.2cqw;bottom:1.4cqw;display:flex;gap:1.2cqw;align-items:flex-end;z-index:5}
@@ -6942,9 +6948,15 @@ button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;
 .domfc.ready{animation:fcglow 1.1s ease-in-out infinite alternate}.domfc.ready .fring{background:conic-gradient(#ffd76a 100%,#ffd76a 0);filter:drop-shadow(0 0 .6cqw #ffd76a)}.domfc.ready img{filter:none;border-color:#ffd76a}
 @keyframes fcglow{from{transform:scale(1)}to{transform:scale(1.08)}}
 .domfc.active .fring{background:conic-gradient(#ff6a8a 100%,#ff6a8a 0);filter:drop-shadow(0 0 .6cqw #ff6a8a)}.domfc.active img{border-color:#ff6a8a}.domfc.active .lbl{color:#ffb3c0}
-.domfc:disabled{cursor:default}.domfc:disabled:not(.active) img{filter:saturate(.5) brightness(.75)}.domfc.down{opacity:.4;filter:grayscale(1)}
+.domfc:disabled{cursor:default;opacity:1}.domfc.active{opacity:1}.domfc:disabled:not(.active) img{filter:saturate(.5) brightness(.75)}.domfc.down{opacity:.4;filter:grayscale(1)}
 .domfc:not(:disabled):active{transform:scale(.94)}
-@media(max-width:900px){.main{grid-template-columns:38% 1fr;grid-template-rows:1fr}.main .center{grid-column:auto;grid-row:auto}}
+.banner .box{width:100%}.banner img{width:100%;height:auto;max-height:62cqh;object-fit:cover;object-position:50% 20%;margin-bottom:.6cqw;display:block}
+.banner .kan{font-size:clamp(26px,7cqw,80px)}.banner .kan:empty,.banner .eng:empty{display:none}.banner .kor{font-size:clamp(14px,2.6cqw,28px);margin-top:.2cqw}.banner .eng{font-size:clamp(8px,1cqw,12px);margin-top:.3cqw}
+.tbroot,.tbroot *{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+.tbroot{user-select:none;-webkit-user-select:none}
+.tbroot button:focus{outline:none}
+@media(max-width:900px){.main{grid-template-columns:44% 1fr;grid-template-rows:1fr}.main .center{grid-column:auto;grid-row:auto}}
+@media(max-width:560px){.main{grid-template-columns:44% 1fr;grid-template-rows:1fr}.main .center{grid-column:auto;grid-row:auto}.stage{height:50cqh}}
 </style><div class="tbroot" id="tbroot"><div id="bg"></div><div id="app">
   <div class="top">
     <button id="bFlee2" class="flee" aria-label="도주해서 나가기">‹</button>
@@ -6973,10 +6985,10 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms/SPEED));
 const ELN={fire:'불',water:'물',grass:'풀',light:'빛',dark:'어둠'};
 /* 캐릭터별 기술/궁극기/영역 (텍스트 RPG와 동일) — 능력치는 원래 게임의 육성·장비를 그대로 사용 */
 const TH={
-  rod:{skill:{name:'일섬',el:'light',els:['light','dark'],pow:65,hits:1,acc:100,gim:'haste',vfx:'light'},
+  rod:{fp:'50% 12%',skill:{name:'일섬',el:'light',els:['light','dark'],pow:65,hits:1,acc:100,gim:'haste',vfx:'light'},
     ult:{name:'만월낙하',el:'dark',els:['light','dark'],pow:150,hits:1,acc:100,gim:'dom+',vid:'ult.mp4'},
     domain:{name:'흑월의 정원',fx:'inf',fxName:'무한 일섬'}},
-  yuria:{skill:{name:'적안섬광',el:'fire',pow:78,hits:1,acc:100,gim:'ult+',vfx:'flashPoint'},
+  yuria:{fp:'58% 30%',skill:{name:'적안섬광',el:'fire',pow:78,hits:1,acc:100,gim:'ult+',vfx:'flashPoint'},
     ult:{name:'혈인 일섬',el:'dark',els:['fire','dark'],pow:165,hits:4,acc:100,gim:'bleed',vfx:'bloodBrush',vid:'yuria_ult.mp4'},
     domain:{name:'혈야의 영지',fx:'ultfin',fxName:'궁극기 마무리'}}};
 const SFXMAP={slash:'slash_light',combo:'combo5',brk:'break',domain:'domain_ping'};
@@ -7005,12 +7017,11 @@ function render(){
   $('tTurn').textContent=B.turn;
   $('heroes').innerHTML=B.heroes.map(u=>{const r=Math.max(0,u.cur/u.hp);const tags=[];
     if(B.domain&&B.domain.id===u.id)tags.push(`<span class="tag">${u.H.domain.fxName}</span>`);if(coexist())tags.push('<span class="tag gold">領域共存</span>');if(u.stage.atk>0)tags.push(`<span class="tag">공격 +${u.stage.atk}</span>`);if(u.stage.def>0)tags.push(`<span class="tag">방어 +${u.stage.def}</span>`);if(u.shield)tags.push('<span class="tag">결계</span>');if(u.haste)tags.push('<span class="tag">선공</span>');if(u.awake)tags.push('<span class="tag gold">흑월 각성</span>');if(u.bleed>0)tags.push(`<span class="tag warn">출혈 ${u.bleed}</span>`);
-    return `<div class="unit${B.actId===u.id?' act':''}${alive(u)?'':' down'}" id="u_${u.id}"><img src="${u.H.face}" alt=""><div><div class="nm">${elb(u.els[0])}${elb(u.els[1])} ${u.name}<small>Lv.${u.lv}</small></div>
-      <div class="bar hp${r<=.2?' low':r<=.5?' mid':''}"><i style="width:${r*100}%"></i></div><div class="sub"><span>HP ${Math.max(0,u.cur)}/${u.hp}</span><span>${u.H.skill.name}</span></div>
-      <div class="bar ult${u.ult>=100?' ready':''}"><i style="width:${u.ult}%"></i></div><div class="sub"><span>${u.H.ult.name}</span><span>${u.ult>=100?'READY':Math.floor(u.ult)+'%'}</span></div><div class="tags">${tags.join('')}</div>
-      </div></div>`}).join('');
+    return `<div class="unit${B.actId===u.id?' act':''}${alive(u)?'':' down'}" id="u_${u.id}"><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><div class="nm">${elb(u.els[0])}${elb(u.els[1])} ${u.name}<small>Lv.${u.lv}</small></div>
+      <div class="bar hp${r<=.2?' low':r<=.5?' mid':''}"><i style="width:${r*100}%"></i></div><div class="sub"><span>HP</span><span>${Math.max(0,u.cur)}/${u.hp}</span></div>
+      <div class="bar ult${u.ult>=100?' ready':''}"><i style="width:${u.ult}%"></i></div><div class="sub"><span>${u.H.ult.name}</span><span>${u.ult>=100?'READY':Math.floor(u.ult)+'%'}</span></div><div class="tags">${tags.join('')}</div></div>`}).join('');
   $('domDock').innerHTML=B.heroes.map(u=>{const on=B.domain&&B.domain.id===u.id,ready=u.dom>=100&&!B.over&&alive(u)&&!on,dis=B.over||!alive(u)||u.dom<100||on||domLock||!!B.domReq;
-    return `<button class="domfc${on?' active':ready?' ready':''}${alive(u)?'':' down'}" data-dom="${u.id}" ${dis?'disabled':''} style="--g:${on?100:Math.min(100,u.dom)}%" aria-label="${u.name} 영역 전개"><span class="fring"></span><img src="${u.H.face}" alt=""><span class="lbl">${B.domReq===u.id?'대기…':on?`${B.domain.turns}턴`:u.dom>=100?'READY':Math.floor(u.dom)+'%'}</span><span class="dn">${u.H.domain.name}</span></button>`}).join('');
+    return `<button class="domfc${on?' active':ready?' ready':''}${alive(u)?'':' down'}" data-dom="${u.id}" ${dis?'disabled':''} style="--g:${on?100:Math.min(100,u.dom)}%" aria-label="${u.name} 영역 전개"><span class="fring"></span><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><span class="lbl">${B.domReq===u.id?'대기…':on?`${B.domain.turns}턴`:u.dom>=100?'READY':Math.floor(u.dom)+'%'}</span><span class="dn">${u.H.domain.name}</span></button>`}).join('');
   $('domDock').querySelectorAll('.domfc').forEach(b=>b.onclick=()=>useDomain(b.dataset.dom));
   renderStage();
 }
@@ -7166,7 +7177,7 @@ async function runDomain(id){
       if(!B.over&&!alive(foe())){domLock=false;await foeFaint()}
     }else{
       sfx('domain');log(`<strong>영역 전개 — 혈야의 영지.</strong>`,'domain');
-      await banner('領域展開','혈야의 영지','DOMAIN ✦ EXPANSION','blood',h.H.cutin,1500);
+      await banner('','혈야의 영지','','blood',h.H.cutin,1500);
       B.domain={id:'yuria',name:h.H.domain.name,turns:3};tbroot.className='tbroot dom-blood';
       log(`핏빛 안개가 전장을 뒤덮었다. <strong>3턴</strong> 동안 공격 ×1.3, 받는 피해 ×0.7 · 매 턴 적에게 출혈 · 영역이 닫힐 때 <strong>혈인 일섬</strong>.`,'domain');
       const f=foe();if(alive(f)){f.bleed=Math.max(f.bleed,2);log(`<em>${f.short}</em>은(는) 출혈 상태가 되었다!`,'sys')}
