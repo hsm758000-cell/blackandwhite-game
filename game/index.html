@@ -7227,7 +7227,7 @@ function renderGacha(){
     :`<img class="awk" src="${BACK2_IMG||ROSTER[0].img}" alt="">`;
   $('gTitle').innerHTML=`${bn.title} <i class="qm">?</i>`;
   $('gTickets').textContent=fmt(PROG.tickets);$('gGems').textContent=fmt(PROG.gems);$('gPts').textContent=fmt(PROG.pts);
-  $('gThumbs').innerHTML=BANNERS.map((b,i)=>{const img=b.id==='picky'?`<img src="${HEROES.yuria.nodeArt}" alt="" style="left:0;top:-30%;width:100%">`:b.id==='picko'?`<img src="${HEROES.one.nodeArt}" alt="" style="left:0;top:-20%;width:100%">`:b.id==='std'?`<img src="${LOBBY_SRC}" alt="" style="left:0;top:-40%;width:100%">`:`<img src="${ROSTER[0].img}" alt="" style="right:-6%;top:-10%;height:170%">`;
+  $('gThumbs').innerHTML=BANNERS.map((b,i)=>{const img=b.id==='picky'?`<img src="img/yuria_face_sq.webp" alt="" style="right:-2%;top:-40%;height:190%;width:auto">`:b.id==='picko'?`<img src="${HEROES.one.nodeArt}" alt="" style="left:0;top:-20%;width:100%">`:b.id==='std'?`<img src="${LOBBY_SRC}" alt="" style="left:0;top:-40%;width:100%">`:`<img src="${ROSTER[0].img}" alt="" style="right:-6%;top:-10%;height:170%">`;
     return `<button class="gth${i===gSel?' on':''}" data-i="${i}" style="--tb:${b.thumb}"><span class="tbg"></span>${img}<span class="tgl"></span><span class="tsub">${b.id==='std'?'STANDARD':'PICK UP'}</span><span class="tnm">${b.name}</span></button>`}).join('');
   $('gThumbs').querySelectorAll('.gth').forEach(t=>t.onclick=()=>{gSel=+t.dataset.i;renderGacha()});
   $('gPanel').innerHTML=`<span class="gtag">${bn.tag}</span><div class="gname"><i class="st a">✦</i><i class="st b">✦</i><i class="st c">✦</i>${bn.name}<small>${bn.en}</small></div><div class="gline"></div>
