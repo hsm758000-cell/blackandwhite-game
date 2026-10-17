@@ -1815,6 +1815,9 @@ html.nat,html.nat body{background:#000!important}
 .setsec{gap:.55cqw}.sethead{margin-bottom:.8cqw}
 .setrow{font-size:clamp(10px,1.2cqw,14px)}
 .setrow{grid-template-columns:13cqw 1fr 3.2cqw}
+/* 화면 전환: 흰 번쩍임 대신 어두운 페이드 */
+.flashd{position:absolute;inset:0;z-index:25;background:#05040a;pointer-events:none;animation:flashd .3s ease-out forwards}
+@keyframes flashd{0%{opacity:.55}100%{opacity:0}}
 
 </style>
 <div class="game">
@@ -5364,6 +5367,8 @@ let foeHitT=0;
 const toastEl=$('toast');let toastT=0;
 function toast(t){toastEl.textContent=t;toastEl.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>toastEl.hidden=true,1500)}
 function flashW(){const f=document.createElement('div');f.className='flashw';stage.appendChild(f);setTimeout(()=>f.remove(),520)}
+/* 메뉴/화면 전환용: 흰 번쩍임 대신 짧은 어두운 페이드 */
+function flashUI(){const f=document.createElement('div');f.className='flashd';stage.appendChild(f);setTimeout(()=>f.remove(),320)}
 var ULT_SRC="ult.mp4",YULT_SRC="yuria_ult.mp4";const CUTIN_SRC="img/cutin.webp",DOMBG_SRC="img/dombg.webp",LOADING_SRC="img/loading.webp",LOBBY_SRC="img/lobby.webp";
 
 /* ── 로비 동작 ── */
@@ -5400,7 +5405,7 @@ function renderChars(){
   $('cOwned').querySelectorAll('.ccard').forEach(b=>b.onclick=()=>openDetail(b.dataset.id));
   $('cUnowned').querySelectorAll('.ccard').forEach(b=>b.onclick=()=>toast('아직 만나지 못한 마법사입니다'));
 }
-async function openChars(){flashW();await sleep(150);show('chars');renderChars()}
+async function openChars(){flashUI();await sleep(150);show('chars');renderChars()}
 function closeChars(){show('lobby')}
 
 /* ── 캐릭터 상세 ── */
@@ -5434,7 +5439,7 @@ const HERO_SKILLS=[
   {n:'흑월의 정원',i:'pas',lv:1,ult:true,d:'영역 전개 고유 효과 · 특수 스킬 무한 사용 — 영역이 열린 턴, 로스바이세의 턴은 20초 동안 끝나지 않으며 일섬을 PP 소모 없이 무한히 사용한다.'}];
 function openDetail(id){
   if(id&&HEROES[id])CUR=id;const H=HEROES[CUR],P=chP(CUR);
-  flashW();show('detail');$('detail').classList.remove('arti','nodetab');$('detail').dataset.ch=CUR;
+  flashUI();show('detail');$('detail').classList.remove('arti','nodetab');$('detail').dataset.ch=CUR;
   $('dArt').src=H.img;$('nArt').src=H.nodeArt;$('dSig').textContent=H.sig;$('dNameK').textContent=H.name;$('dNameE').textContent=H.en;$('dName').innerHTML=`${H.name} <span class="rolei" title="브레이커">✸</span>`;
   const b=bonus(CUR),asc=P.nodes||0,SKL=CUR==='rod'?HERO_SKILLS:YURIA_SKILLS;
   $('dLv').textContent='Lv.'+P.lv;$('dEls').innerHTML=heroEmblem(CUR);$('dAsc').innerHTML=Array.from({length:5},(_,i)=>`<i class="${i<asc?'on':''}"></i>`).join('');
@@ -5566,7 +5571,7 @@ function renderPins(){
 }
 let selTier=null;
 function selectRegion(r){
-  selRegion=r;MAP.light(r);renderPins();flashW();
+  selRegion=r;MAP.light(r);renderPins();flashUI();
   $('dpName').innerHTML=`${elb(r.el)} ${r.name}`;
   const own=r.items.filter(i=>INV.owned.includes(i.id)).length;
   $('dpSub').textContent=`${EL[r.el].n} 속성 지역 · ${r.boss?'보스 ':'적 '}${r.foes.map(i=>FOES[i].name).join(', ')} · 아티팩트 ${own}/${r.items.length} 획득`;
@@ -5576,7 +5581,7 @@ function selectRegion(r){
   $('dpInfo').textContent=`난이도 ${selTier.n} · 적 Lv.${selTier.lv} · 골드 ${fmt(tierGold(selTier.lv))} · EXP ${fmt(tierExp(selTier.lv))} · 아티팩트 ${Math.round(selTier.drop*100)}%`;
   $('dGo').disabled=entries<=0;
 }
-async function openDungeon(){flashW();await sleep(150);show('dungeon');$('entries').textContent=`${entries}/5`;MAP.resize();MAP.start();renderPins();if(selRegion)selectRegion(selRegion)}
+async function openDungeon(){flashUI();await sleep(150);show('dungeon');$('entries').textContent=`${entries}/5`;MAP.resize();MAP.start();renderPins();if(selRegion)selectRegion(selRegion)}
 function closeDungeon(){show('lobby')}
 $('lDungeon').onclick=openDungeon;$('dHome').onclick=closeDungeon;$('dBack').onclick=closeDungeon;
 $('dGo').onclick=()=>{if(!selRegion||entries<=0)return;entries--;$('entries').textContent=`${entries}/5`;$('dungeon').hidden=true;openParty({...selRegion,lv:selTier.lv,tier:selTier})};
@@ -5610,7 +5615,7 @@ const addDom=v=>{if(B&&!B.domain)B.dom=Math.min(100,B.dom+v)};
 const foe=()=>B.team[B.idx];
 
 async function enterBattle(region){
-  flashW();await sleep(180);show('battle');
+  flashUI();await sleep(180);show('battle');
   B=newBattle(region||null);resetVisuals();showFoe(true);setHeroVisual();renderMoves();render();document.querySelector('.dcore').innerHTML=emblemOf(B.hero);BG.update();
   if(window.ARENA)ARENA.resize();
   say('');await playEmblem();
@@ -6111,7 +6116,7 @@ document.addEventListener('keydown',e=>{
   await sleep(150);done+=1;set('준비 완료',0);
   fill.style.width='100%';pct.textContent='100%';await sleep(300);
   const tap=$('ldTap');tap.hidden=false;
-  const start=()=>{tap.onclick=null;AUD.unlock();flashW();setTimeout(()=>ACC.enter(),180)};
+  const start=()=>{tap.onclick=null;AUD.unlock();flashUI();setTimeout(()=>ACC.enter(),180)};
   AUD.screen('loading');
   tap.onclick=start;
 })();
@@ -6211,7 +6216,7 @@ function renderLu(){
 $('luMin').onclick=()=>{luN=1;renderLu()};$('luMax').onclick=()=>{luN=luMaxN();renderLu()};
 $('luDec').onclick=()=>{luN--;renderLu()};$('luInc').onclick=()=>{luN++;renderLu()};
 $('luGo').onclick=()=>{if(luN<1)return;let cost=0,xp=0;for(let l=chP(CUR).lv;l<chP(CUR).lv+luN;l++){cost+=luCost(l);xp+=expNeed(l)}
-  PROG.gold-=cost;PROG.exp-=xp;chP(CUR).lv+=luN;ROSTER.find(c=>c.id===CUR).lv=chP(CUR).lv;saveProg();flashW();
+  PROG.gold-=cost;PROG.exp-=xp;chP(CUR).lv+=luN;ROSTER.find(c=>c.id===CUR).lv=chP(CUR).lv;saveProg();flashUI();
   const h=document.querySelector('#levelup .dart').getBoundingClientRect(),s=stage.getBoundingClientRect();
   burst(h.left-s.left+h.width/2,h.top-s.top+h.height*.4,40,['#ffd76a','#fff3c4','#ffffff'],{dir:-Math.PI/2,spread:2.4,sp:300,drag:.96,life:1,s:3});
   toast(`Lv.${chP(CUR).lv} 달성!`);luN=1;renderLu()};
@@ -6359,7 +6364,7 @@ function renderPinfo(){
 $('piBack').onclick=()=>openParty(pendingRegion,true);$('piAddArt').onclick=()=>{eqFrom='party';openEquip({k:'char',ch:piView})};
 $('piReset').onclick=()=>{PROG.party=['rod',null,null,null];renderPinfo();toast('편성을 초기화했습니다')};
 $('piAuto').onclick=()=>{PROG.party=['rod',null,null,null];renderPinfo();toast('자동 편성 완료 — 보유 마법사 1명')};
-$('piSave').onclick=()=>{saveProg();flashW();toast('편성을 저장했습니다')};
+$('piSave').onclick=()=>{saveProg();flashUI();toast('편성을 저장했습니다')};
 
 /* 로비 MENU에 편성 추가 */
 (()=>{const m=$('lMenuItems');const b=document.createElement('button');b.className='lmb';b.innerHTML='<span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7" height="14" rx="1.5"/><rect x="14" y="5" width="7" height="14" rx="1.5"/><path d="M6.5 9v6M17.5 9v6"/></svg></span><span class="llbl">편성</span>';b.onclick=openParty;m.appendChild(b)})();
@@ -6642,7 +6647,7 @@ function applySave(sv){
   $('lgForm').onsubmit=async e=>{e.preventDefault();const id=$('lgId').value.trim(),pw=$('lgPw').value,pw2=$('lgPw2').value,msg=$('lgMsg'),go=$('lgGo');go.disabled=true;msg.className='lgmsg';msg.textContent=mode==='in'?'확인 중…':'계정을 만드는 중…';
     try{if(mode==='up'){const err=await ACC.signup(id,pw,pw2);if(err){msg.textContent=err;return}msg.className='lgmsg ok';msg.textContent='가입 완료 — 로그인합니다';await sleep(500)}
       const err=await ACC.login(id,pw);if(err){msg.className='lgmsg';msg.textContent=err;return}
-      flashW();AUD.unlock();setTimeout(()=>show('lobby'),150);toast(`${id}님, 환영합니다`)}
+      flashUI();AUD.unlock();setTimeout(()=>show('lobby'),150);toast(`${id}님, 환영합니다`)}
     finally{go.disabled=false}};
   ACC.init();
 })();
@@ -7135,7 +7140,7 @@ async function waitPause(){while(paused)await new Promise(r=>setTimeout(r,120))}
 function roundOrder(){const us=[...aliveH().map(u=>({u,p:u.haste?1:0,s:u.spd,h:1})),{u:foe(),p:0,s:foe().spd,h:0}];us.sort((a,b)=>b.p-a.p||b.s-a.s||b.h-a.h);us.forEach(x=>x.u.haste=0);return us.map(x=>x.u)}
 async function start(region){
   const my=++runId;running=true;domLock=false;
-  flashW();await new Promise(r=>setTimeout(r,180));show('battle');try{if(window.NAT&&window.Native)Native.battle(false)}catch(e){}
+  flashUI();await new Promise(r=>setTimeout(r,180));show('battle');try{if(window.NAT&&window.Native)Native.battle(false)}catch(e){}
   B=newBattle(region||null);adapt();tbroot.className='tbroot';tbroot.querySelectorAll('.ultv,.banner,.coex').forEach(e=>e.remove());
   $('tReg').textContent=region?(region.run?`STAGE ${region.run.stage} - ${region.run.node}/6`:region.name+(region.tier?' · '+region.tier.n:'')):'자유 전투';
   logEl.innerHTML='';logN=0;$('bSpeed').textContent='속도 ×'+SPEED;
