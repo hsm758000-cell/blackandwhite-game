@@ -1782,6 +1782,10 @@ html.proxy .stage{visibility:hidden}
 .gacha.std .gbg-art.scene::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0a0c22e0 0,#0a0c2280 45%,#0a0c2230 100%)}
 .auto #battle>*:not(#tbhost){display:none!important}
 #tbhost{position:absolute;inset:0;z-index:9}
+/* 모바일 터치 하이라이트(파란 박스) 제거 */
+html,body,*,*::before,*::after{-webkit-tap-highlight-color:rgba(0,0,0,0)!important;-webkit-touch-callout:none}
+button,a,[role=button],label,input,select{-webkit-tap-highlight-color:rgba(0,0,0,0)!important}
+*:focus:not(:focus-visible){outline:none!important}
 
 </style>
 <div class="game">
@@ -6924,13 +6928,20 @@ button.gold{background:linear-gradient(180deg,#ffe9a3,#f2c75c);color:#1c1a2e;bor
 button{font-size:clamp(10px,1.05cqw,14px);padding:.45cqw 1.1cqw}
 button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;border-radius:50%;font-size:1.6em;line-height:1;display:grid;place-items:center}
 .stage{height:50cqh}
-.main{gap:.8cqw;grid-template-columns:44% 1fr}.panel{padding:.7cqw .8cqw;border-radius:1.1cqw}.ptitle{font-size:clamp(7px,.8cqw,10px);margin-bottom:.3cqw}
+.main{gap:.8cqw;grid-template-columns:50% 1fr}.panel{padding:.7cqw .8cqw;border-radius:1.1cqw}.ptitle{font-size:clamp(7px,.8cqw,10px);margin-bottom:.3cqw}
 /* 파티 카드: 세로형(얼굴 위, 정보 아래) · 최대 4명 가로 배치 */
-#heroes{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.6cqw;height:100%;align-content:start}
-.unit{display:flex;flex-direction:column;align-items:center;text-align:center;grid-template-columns:none;gap:.2cqw;padding:.45cqw .5cqw;margin:0;min-width:0}
-.unit img{width:4.2cqw;height:4.2cqw;min-width:30px;min-height:30px}
-.unit>div{width:100%}.unit .nm{justify-content:center;font-size:clamp(9px,1cqw,13px);gap:.25cqw}.unit .nm small{font-size:.85em}
-.unit .nm .el{width:.9cqw;height:.9cqw;min-width:8px;min-height:8px}
+#heroes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5cqw;height:calc(100% - 1.6cqh);align-content:stretch}
+#party{overflow:hidden;display:flex;flex-direction:column}
+.unit{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;grid-template-columns:none;gap:.25cqh;padding:.8cqh .4cqw;margin:0;min-width:0;min-height:0;overflow:hidden}
+.unit img,.unit .ph{width:min(4.4cqw,9.5cqh);height:min(4.4cqw,9.5cqh);min-width:0;min-height:0;flex:none}
+.unit .ph{border-radius:50%;background:#ffffff0a;border:2px dashed #ffffff25}
+.unit.empty{opacity:.5}.unit.empty .nm{color:var(--dim);font-weight:400}
+.unit>div{width:100%}.unit .nm{justify-content:center;font-size:clamp(8px,.95cqw,13px);gap:.25cqw;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.unit .nm small{font-size:.85em;margin-left:.2cqw}
+.unit .nm .el{width:.85cqw;height:.85cqw;min-width:7px;min-height:7px}
+.unit .bar{margin-top:.6cqh;height:1.2cqh;min-height:4px}
+.unit .sub{margin-top:.1cqh}
+.tag{font-size:clamp(6px,.7cqw,9px);padding:0 .45cqw}.tags{justify-content:center;gap:.2cqw;margin-top:.3cqh;flex-wrap:nowrap;overflow:hidden}
 .sub{font-size:clamp(7px,.8cqw,10px)}.tag{font-size:clamp(7px,.75cqw,9px);padding:0 .5cqw}.tags{justify-content:center;gap:.25cqw}
 .bar{height:.7cqw;min-height:5px}.dombtn{font-size:clamp(9px,1cqw,13px);padding:.5cqw .8cqw}
 .log{font-size:clamp(9px,1cqw,13px);gap:.3cqw}.log p{padding:.35cqw .7cqw}.log p.sys{font-size:.92em}
@@ -6952,11 +6963,11 @@ button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;
 .domfc:not(:disabled):active{transform:scale(.94)}
 .banner .box{width:100%}.banner img{width:100%;height:auto;max-height:62cqh;object-fit:cover;object-position:50% 20%;margin-bottom:.6cqw;display:block}
 .banner .kan{font-size:clamp(26px,7cqw,80px)}.banner .kan:empty,.banner .eng:empty{display:none}.banner .kor{font-size:clamp(14px,2.6cqw,28px);margin-top:.2cqw}.banner .eng{font-size:clamp(8px,1cqw,12px);margin-top:.3cqw}
-.tbroot,.tbroot *{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+.tbroot,.tbroot *{-webkit-tap-highlight-color:rgba(0,0,0,0)!important;-webkit-touch-callout:none}
 .tbroot{user-select:none;-webkit-user-select:none}
 .tbroot button:focus{outline:none}
-@media(max-width:900px){.main{grid-template-columns:44% 1fr;grid-template-rows:1fr}.main .center{grid-column:auto;grid-row:auto}}
-@media(max-width:560px){.main{grid-template-columns:44% 1fr;grid-template-rows:1fr}.main .center{grid-column:auto;grid-row:auto}.stage{height:50cqh}}
+@media(max-width:900px){.main{grid-template-columns:50% 1fr;grid-template-rows:1fr}.main .center{grid-column:auto;grid-row:auto}}
+@media(max-width:560px){.main{grid-template-columns:50% 1fr;grid-template-rows:1fr}.main .center{grid-column:auto;grid-row:auto}.stage{height:50cqh}}
 </style><div class="tbroot" id="tbroot"><div id="bg"></div><div id="app">
   <div class="top">
     <button id="bFlee2" class="flee" aria-label="도주해서 나가기">‹</button>
@@ -6988,7 +6999,7 @@ const TH={
   rod:{fp:'50% 12%',skill:{name:'일섬',el:'light',els:['light','dark'],pow:65,hits:1,acc:100,gim:'haste',vfx:'light'},
     ult:{name:'만월낙하',el:'dark',els:['light','dark'],pow:150,hits:1,acc:100,gim:'dom+',vid:'ult.mp4'},
     domain:{name:'흑월의 정원',fx:'inf',fxName:'무한 일섬'}},
-  yuria:{fp:'58% 30%',skill:{name:'적안섬광',el:'fire',pow:78,hits:1,acc:100,gim:'ult+',vfx:'flashPoint'},
+  yuria:{fp:'50% 50%',face:'img/yuria_face_sq.webp',skill:{name:'적안섬광',el:'fire',pow:78,hits:1,acc:100,gim:'ult+',vfx:'flashPoint'},
     ult:{name:'혈인 일섬',el:'dark',els:['fire','dark'],pow:165,hits:4,acc:100,gim:'bleed',vfx:'bloodBrush',vid:'yuria_ult.mp4'},
     domain:{name:'혈야의 영지',fx:'ultfin',fxName:'궁극기 마무리'}}};
 const SFXMAP={slash:'slash_light',combo:'combo5',brk:'break',domain:'domain_ping'};
@@ -7019,7 +7030,7 @@ function render(){
     if(B.domain&&B.domain.id===u.id)tags.push(`<span class="tag">${u.H.domain.fxName}</span>`);if(coexist())tags.push('<span class="tag gold">領域共存</span>');if(u.stage.atk>0)tags.push(`<span class="tag">공격 +${u.stage.atk}</span>`);if(u.stage.def>0)tags.push(`<span class="tag">방어 +${u.stage.def}</span>`);if(u.shield)tags.push('<span class="tag">결계</span>');if(u.haste)tags.push('<span class="tag">선공</span>');if(u.awake)tags.push('<span class="tag gold">흑월 각성</span>');if(u.bleed>0)tags.push(`<span class="tag warn">출혈 ${u.bleed}</span>`);
     return `<div class="unit${B.actId===u.id?' act':''}${alive(u)?'':' down'}" id="u_${u.id}"><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><div class="nm">${elb(u.els[0])}${elb(u.els[1])} ${u.name}<small>Lv.${u.lv}</small></div>
       <div class="bar hp${r<=.2?' low':r<=.5?' mid':''}"><i style="width:${r*100}%"></i></div><div class="sub"><span>HP</span><span>${Math.max(0,u.cur)}/${u.hp}</span></div>
-      <div class="bar ult${u.ult>=100?' ready':''}"><i style="width:${u.ult}%"></i></div><div class="sub"><span>${u.H.ult.name}</span><span>${u.ult>=100?'READY':Math.floor(u.ult)+'%'}</span></div><div class="tags">${tags.join('')}</div></div>`}).join('');
+      <div class="bar ult${u.ult>=100?' ready':''}"><i style="width:${u.ult}%"></i></div><div class="sub"><span>${u.H.ult.name}</span><span>${u.ult>=100?'READY':Math.floor(u.ult)+'%'}</span></div><div class="tags">${tags.join('')}</div></div>`}).concat(Array.from({length:Math.max(0,4-B.heroes.length)},()=>'<div class="unit empty"><span class="ph"></span><div class="nm">빈 자리</div></div>')).join('');
   $('domDock').innerHTML=B.heroes.map(u=>{const on=B.domain&&B.domain.id===u.id,ready=u.dom>=100&&!B.over&&alive(u)&&!on,dis=B.over||!alive(u)||u.dom<100||on||domLock||!!B.domReq;
     return `<button class="domfc${on?' active':ready?' ready':''}${alive(u)?'':' down'}" data-dom="${u.id}" ${dis?'disabled':''} style="--g:${on?100:Math.min(100,u.dom)}%" aria-label="${u.name} 영역 전개"><span class="fring"></span><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><span class="lbl">${B.domReq===u.id?'대기…':on?`${B.domain.turns}턴`:u.dom>=100?'READY':Math.floor(u.dom)+'%'}</span><span class="dn">${u.H.domain.name}</span></button>`}).join('');
   $('domDock').querySelectorAll('.domfc').forEach(b=>b.onclick=()=>useDomain(b.dataset.dom));
