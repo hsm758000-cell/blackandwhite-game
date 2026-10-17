@@ -6590,8 +6590,10 @@ const ACC=(()=>{
   return{init,enter,signup,login,logout,save,flush,exportCode,importCode,uploadToCloud,handle,get user(){return cur},get backend(){return backend},get ready(){return ready}};
 })();
 function applySave(sv){
-  for(const k of Object.keys(PROG))delete PROG[k];Object.assign(PROG,JSON.parse(JSON.stringify(PROG_DEF)),(sv&&sv.prog)||{});migrateProg();
-  for(const k of Object.keys(INV))delete INV[k];Object.assign(INV,{owned:[],ceq:{rod:null,yuria:null},teq:[null,null,null],cleared:[]},(sv&&sv.inv)||{});
+  // DB 에서 받은 객체는 동결(frozen)되어 있을 수 있으므로 반드시 깊은 복사해서 사용
+  const clone=o=>{try{return JSON.parse(JSON.stringify(o||{}))}catch(e){return{}}};
+  for(const k of Object.keys(PROG))delete PROG[k];Object.assign(PROG,JSON.parse(JSON.stringify(PROG_DEF)),clone(sv&&sv.prog));migrateProg();
+  for(const k of Object.keys(INV))delete INV[k];Object.assign(INV,{owned:[],ceq:{rod:null,yuria:null},teq:[null,null,null],cleared:[]},clone(sv&&sv.inv));
   if(!INV.ceq)INV.ceq={rod:null,yuria:null};if(INV.ceq.yuria===undefined)INV.ceq.yuria=null;if(!INV.teq)INV.teq=[null,null,null];INV.owned=(INV.owned||[]).filter(id=>ITEM_BY[id]);if(!INV.cleared)INV.cleared=[];
   if(PROG.gems==null)PROG.gems=600;if(PROG.tickets==null)PROG.tickets=0;if(PROG.pts==null)PROG.pts=0;
   ROSTER.forEach(c=>{if(HEROES[c.id]){c.lv=chP(c.id).lv;c.asc=chP(c.id).nodes;c.owned=isOwned(c.id)}});
