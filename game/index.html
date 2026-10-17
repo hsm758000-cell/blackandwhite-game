@@ -1786,6 +1786,10 @@ html.proxy .stage{visibility:hidden}
 html,body,*,*::before,*::after{-webkit-tap-highlight-color:rgba(0,0,0,0)!important;-webkit-touch-callout:none}
 button,a,[role=button],label,input,select{-webkit-tap-highlight-color:rgba(0,0,0,0)!important}
 *:focus:not(:focus-visible){outline:none!important}
+/* 전투를 웹뷰가 전부 그리므로 네이티브 투명 영역이 필요 없음 → 불투명 배경(터치 시 흰 번쩍임 방지) */
+html.nat,html.nat body{background:#000!important}
+.nat .stage.natb{background:#060a1e!important}
+.nat #battle{background:#0a0812}
 
 </style>
 <div class="game">
