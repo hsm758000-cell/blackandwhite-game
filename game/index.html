@@ -1790,6 +1790,33 @@ button,a,[role=button],label,input,select{-webkit-tap-highlight-color:rgba(0,0,0
 html.nat,html.nat body{background:#000!important}
 .nat .stage.natb{background:#060a1e!important}
 .nat #battle{background:#0a0812}
+/* ===== 모바일(19.5:9) 레이아웃 보정 ===== */
+/* 캐릭터 상세 · 기본: 정보 패널이 하단 버튼을 침범하지 않도록 압축 */
+.dinfo{top:8.2cqw;bottom:6.4cqw;gap:.4cqw;overflow:hidden}
+.dhead h3{font-size:clamp(13px,2cqw,22px)}
+.dlv{font-size:clamp(10px,1.35cqw,15px)}
+.dstars{padding:.2cqw .6cqw}
+.dstat{font-size:clamp(9px,1.12cqw,13px)}
+.dstat td{padding:.18cqw .6cqw}
+.dskh{font-size:clamp(10px,1.25cqw,14px);margin-top:.2cqw}
+.dskills{gap:.5cqw}
+.dskdesc{font-size:clamp(8px,1cqw,11px);line-height:1.3;min-height:0;max-height:2.7em;overflow:hidden}
+.dbtns{bottom:1.2cqw}
+.dbtns .gob{padding:.5cqw 2.6cqw;font-size:clamp(11px,1.45cqw,16px)}
+/* 캐릭터 상세 · 아티팩트: 카드 줄을 왼쪽 메뉴와 오른쪽 정보 사이에만 배치 */
+.dartab .abigwrap{left:24cqw;right:33.5cqw;top:46%;transform:translateY(-50%);width:auto;justify-content:center;gap:1cqw;flex-wrap:nowrap}
+.dartab .abigwrap .abig,.dartab .abigph{width:clamp(78px,7.9cqw,150px);flex:0 0 auto}
+.dartab .abigwrap .abig{padding:.35cqw;gap:.3cqw}
+.dartab .abigwrap .abig .anm{font-size:clamp(9px,1.1cqw,13px)}
+.dartab .abigwrap .abig .ast{font-size:clamp(7px,.85cqw,10px)}
+.dartab .abigph b{font-size:1.6em}.dartab .abigph small{font-size:.5em}
+.ainfo{top:7.5cqw;bottom:6.4cqw;overflow:hidden;gap:.4cqw}
+.ainfo .dstat td{color:#1c1a2e!important;opacity:1}
+.ainfo .dstat tr:nth-child(odd) td{background:#f4f4f8}
+.ainfo .aeff{font-size:clamp(8px,1.05cqw,12px)}
+/* 설정 창: 내용이 길어지면 창 안에서 스크롤 */
+.setbox{max-height:92cqh;overflow-y:auto;overscroll-behavior:contain}
+.setrow{grid-template-columns:13cqw 1fr 3.2cqw}
 
 </style>
 <div class="game">
