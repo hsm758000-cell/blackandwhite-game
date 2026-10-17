@@ -1,7 +1,7 @@
 {
-"ver": 7,
+"ver": 8,
 "files": {
-"game/index.html": "f62cf7f0985dea6cc50d68387a03d6f19c7b3a7c",
+"game/index.html": "e1b2352d3cb035be59764d7fb83ffd3c892565d1",
 "game/yuria_ult.mp4": "aeae775a3c2b6cae3b6e7fa58d9d9b69ceedc1f9",
 "game/ult.mp4": "8c4d294ddc2f9e50c1b7c3d856361a4a1bf78839",
 "game/bgm/lobby.mp3": "baf0af96eef08e9379cfca882db0663a15e761f5",
@@ -107,6 +107,7 @@
 "game/foes/09_herbal_witch_normal.webp": "c9463236ba685b83ea27f85155a7aad5ee95aebc",
 "game/foes/10_crimson_hexer_hit.webp": "036d18f55b3cb70f3c9ca894fe511bb9301e58f2",
 "game/foes/boss_jester_death.webp": "4a0a290a716e737b3973aadf6d2563288abce92d",
+"game/sfx/flash.mp3": "4bb9107b89b0c003f64ee50abb3f3db5c39c4519",
 "game/sfx/crescent2.mp3": "f64096d7f88d43d73357878c6f49ad000eac8333",
 "game/sfx/ui.mp3": "88a1bf931ed015adb49533b8b001f877c97d737e",
 "game/sfx/combo5.mp3": "92a07f71a4c49e31a494e9e478655861978e84ea",
@@ -116,6 +117,7 @@
 "game/sfx/ult_moon.mp3": "11098e9f3e40de74d6e81b3f4fea11085d49d8c4",
 "game/sfx/boss_ult.mp3": "dcc872c4017554741107fd3bc0c0afe3b1ed543f",
 "game/sfx/break.mp3": "decdc3157f4ac67212528e7c27781893507f3069",
+"game/sfx/domain_ping.mp3": "02c016dfcd16792d1b19f6b99cf6cadaaa00eb21",
 "game/sfx/rift.mp3": "28414a60c0474ac74011c6ff9b78357605322764",
 "game/sfx/stab.mp3": "767af87b6b3cd5ff5c45139a199a70897458d8a7",
 "game/sfx/ult_blood.mp3": "962fbfc3ddd003cf4505b728d6c97d7fa5f3b302",
