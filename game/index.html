@@ -1828,6 +1828,26 @@ html.nat,html.nat body{background:#000!important}
 .grc .chr img.on{transform:scale(1.9);transform-origin:60% 10%;object-position:60% 0}
 .detail[data-ch="one"] .ncircle img{object-position:50% 40%;transform:none}
 .detail[data-ch="one"] .dart{height:104%;transform:translateX(-50%)}
+/* 로비 원형 배너 3개 */
+.levent{top:47%}.levent.y{top:24%}.levent.o{top:70%;box-shadow:0 0 0 .5cqw #ffffff2a,0 0 1.2cqw #ffffff80,0 4px 12px #000a}
+.levent.o img{object-position:50% 50%}
+/* 던전 패널 접기 */
+.dpanel{transition:transform .35s cubic-bezier(.2,.8,.3,1)}
+.dpanel.fold{transform:translateX(calc(100% + 1.6cqw))}
+.dpfold{position:absolute;left:-2.6cqw;top:50%;transform:translateY(-50%);width:2.6cqw;height:7cqw;min-width:22px;border:1px solid #ffffff30;border-right:0;border-radius:.6cqw 0 0 .6cqw;background:#1a1a26f0;color:#fff;padding:0;cursor:pointer;display:grid;place-items:center}
+.dpfold svg{width:60%;height:60%;transition:transform .3s}
+.dpanel.fold .dpfold svg{transform:rotate(180deg)}
+/* 아티팩트 돌파 */
+.ascrow{display:flex;align-items:center;justify-content:space-between;gap:.6cqw;padding:.4cqw .6cqw;border:1px solid #1c1a2e22;border-radius:.4cqw;background:#f4f4f8}
+.ascst{display:flex;align-items:center;gap:.25cqw}.ascst small{margin-left:.5cqw;color:#4a4866;font-size:clamp(8px,1cqw,11px)}
+.ascst i{width:clamp(10px,1.3cqw,15px);aspect-ratio:1;background:#c7c7d4;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5l3.1 7 7.6.7-5.7 5 1.7 7.5L12 17.8l-6.7 3.9 1.7-7.5-5.7-5 7.6-.7z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5l3.1 7 7.6.7-5.7 5 1.7 7.5L12 17.8l-6.7 3.9 1.7-7.5-5.7-5 7.6-.7z'/%3E%3C/svg%3E") center/contain no-repeat}
+.ascst i.on{background:#e2a93a}
+.ascb{display:flex;flex-direction:column;align-items:center;gap:0;padding:.3cqw 1cqw;border-radius:.4cqw;border:1.5px solid #1c1a2e;background:linear-gradient(180deg,#ffe9a3,#f2c75c);color:#1c1a2e;font:inherit;cursor:pointer;line-height:1.2}
+.ascb b{font-size:clamp(10px,1.2cqw,13px)}.ascb small{font-size:clamp(7px,.85cqw,10px);display:flex;align-items:center;gap:.2cqw}.ascb .coin{width:1em;height:1em}
+.ascmax{font-family:"Cinzel",serif;color:#e2a93a;font-size:clamp(9px,1.1cqw,12px)}
+.ainfo.card .ascrow{background:#f4f4f8}
+.dpanel{overflow:visible}
+.dpanel .film{overflow:auto}
 
 </style>
 <div class="game">
@@ -1888,6 +1908,7 @@ html.nat,html.nat body{background:#000!important}
         <span class="ldots"><b class="on"></b><b></b><b></b></span>
       </button>
 
+      <button class="levent o" data-g="2" aria-label="온리 원 픽업"><img src="img/one_face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1"/></svg>7일</span></button>
       <button class="levent y" data-g="1" aria-label="쿠죠 유리아 픽업"><img src="img/yuria_face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>7일</span></button>
       <button class="levent" data-g="0" aria-label="로스바이세 픽업"><img src="img/face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>6일</span></button>
 
@@ -2107,6 +2128,7 @@ html.nat,html.nat body{background:#000!important}
         <button class="backb" id="dBack" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l-6 6 6 6"/></svg></button>
       </div>
       <aside class="dpanel" id="dpanel">
+        <button class="dpfold" id="dpFold" aria-label="패널 접기/펼치기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
         <div class="dph"><span class="dspk">✦</span><h3 id="dpName">지역을 선택하세요</h3><p id="dpSub">지도에서 지역을 고르면 난이도를 선택할 수 있습니다.</p></div>
         <div class="film difflist" id="film"></div>
         <div class="dpf"><span id="dpInfo"></span><button class="gob" id="dGo" disabled>도전</button></div>
@@ -6130,13 +6152,13 @@ function eqWhere(id){for(const ch in INV.ceq)if(INV.ceq[ch]===id)return{k:'char'
 function unequipItem(id){for(const ch in INV.ceq)if(INV.ceq[ch]===id)INV.ceq[ch]=null;INV.teq=INV.teq.map(x=>x===id?null:x)}
 function equipTo(id,target){unequipItem(id);if(target.k==='char')INV.ceq[target.ch]=id;else INV.teq[target.i]=id;saveInv()}
 function saveInv(){try{localStorage.setItem('hm_inv',JSON.stringify(INV))}catch(e){}if(window.ACC)ACC.save()}
-function bonusEq(ch='rod'){const b={atk:0,def:0,hp:0,spd:0,crit:0,cdmg:0};for(const id of charEq(ch)){const it=ITEM_BY[id];if(it)for(const s in it.st)b[s]+=it.st[s]}return b}
+function bonusEq(ch='rod'){const b={atk:0,def:0,hp:0,spd:0,crit:0,cdmg:0};for(const id of charEq(ch)){const it=ITEM_BY[id];if(it)for(const s in it.st)b[s]+=(typeof artStat==='function'?artStat(it,s):it.st[s])}return b}
 function bonus(ch='rod'){const b=bonusEq(ch);if(typeof nodeBonus==='function'){const n=nodeBonus(ch);for(const k in n)b[k]+=n[k]}return b}
 const rar=n=>'★'.repeat(n);
 const rtag=n=>n>=5?'SSR':'SR';const rcls=n=>'r'+n;
 const rpill=n=>`<span class="${n>=5?'rp5':'rp4'}">${rtag(n)}</span>`;
 const stStr=st=>Object.entries(st).map(([k,v])=>`${{atk:'공격',def:'방어',hp:'HP',spd:'스피드',crit:'치명타',cdmg:'치명피해'}[k]} ${v>0?'+':''}${v}${(k==='crit'||k==='cdmg')?'%':''}`).join(' · ');
-let entries=5,selRegion=null;
+let entries=999,selRegion=null; // 입장 제한 없음
 
 /* ── 던전 지도 ── */
 const MAP=(()=>{
@@ -6185,7 +6207,8 @@ function renderPins(){
   $('pins').querySelectorAll('.pin').forEach(p=>p.onclick=()=>selectRegion(REGIONS[+p.dataset.i]));
 }
 let selTier=null;
-function selectRegion(r){
+$('dpFold').onclick=()=>{$('dpanel').classList.toggle('fold')};
+function selectRegion(r){$('dpanel').classList.remove('fold');
   selRegion=r;MAP.light(r);renderPins();
   $('dpName').innerHTML=`${elb(r.el)} ${r.name}`;
   const own=r.items.filter(i=>INV.owned.includes(i.id)).length;
@@ -6194,12 +6217,12 @@ function selectRegion(r){
   $('film').innerHTML=diffRows(selTier);
   $('film').querySelectorAll('.diffrow').forEach(b=>b.onclick=()=>{selTier=DIFFS[+b.dataset.i];selectRegion(r)});
   $('dpInfo').textContent=`난이도 ${selTier.n} · 적 Lv.${selTier.lv} · 골드 ${fmt(tierGold(selTier.lv))} · EXP ${fmt(tierExp(selTier.lv))} · 아티팩트 ${Math.round(selTier.drop*100)}%`;
-  $('dGo').disabled=entries<=0;
+  $('dGo').disabled=false;
 }
-async function openDungeon(){flashW();await sleep(150);show('dungeon');$('entries').textContent=`${entries}/5`;MAP.resize();MAP.start();renderPins();if(selRegion)selectRegion(selRegion)}
+async function openDungeon(){flashW();await sleep(150);show('dungeon');$('entries').textContent='무제한';MAP.resize();MAP.start();renderPins();if(selRegion)selectRegion(selRegion)}
 function closeDungeon(){show('lobby')}
 $('lDungeon').onclick=openDungeon;$('dHome').onclick=closeDungeon;$('dBack').onclick=closeDungeon;
-$('dGo').onclick=()=>{if(!selRegion||entries<=0)return;entries--;$('entries').textContent=`${entries}/5`;$('dungeon').hidden=true;openParty({...selRegion,lv:selTier.lv,tier:selTier})};
+$('dGo').onclick=()=>{if(!selRegion)return;$('dungeon').hidden=true;openParty({...selRegion,lv:selTier.lv,tier:selTier})};
 
 /* ── 소지품 ── */
 function openBagOld(){
@@ -6581,7 +6604,7 @@ function end(win){
   const r=document.createElement('div');r.className='result'+(win?'':' lose');let drop='';
   r.innerHTML=`<div class="box"><h2>${win?'VICTORY':'DEFEAT'}</h2><p>${B.region?B.region.name+' · ':''}${B.turn}턴 · 쓰러뜨린 상대 ${B.team.filter(u=>u.cur<=0).length}/${B.team.length} · 준 피해 ${B.dealt}</p>${drop}
     <div class="row"><button id="rAgain">다시 도전</button><button class="ghost" id="rLobby">${B.region?'던전 지도로':'로비로'}</button></div></div>`;
-  stage.appendChild(r);const reg0=B.region;$('rAgain').onclick=()=>{if(reg0){if(entries<=0){toast('오늘의 입장 횟수를 모두 썼습니다');return}entries--}r.remove();enterBattle(reg0)};$('rLobby').onclick=()=>{r.remove();backToLobby()};$('rAgain').focus();
+  stage.appendChild(r);const reg0=B.region;$('rAgain').onclick=()=>{r.remove();enterBattle(reg0)};$('rLobby').onclick=()=>{r.remove();backToLobby()};$('rAgain').focus();
 }
 async function heroUlt(free){
   const f=foe(),H=B.hero.def_,m=H.base.ult;B.ult=0;render();
@@ -6839,6 +6862,16 @@ $('luBack').onclick=()=>openDetail();
 
 /* ===== 아티팩트 공통 렌더 ===== */
 const ALV=id=>PROG.alv[id]||1;
+/* 아티팩트 돌파: 0~5단계, 단계당 능력치 +12% · 비용 골드(+중복 조각 있으면 절반) */
+const AASC=id=>(PROG.aasc&&PROG.aasc[id])||0;const ADUP=id=>(PROG.adup&&PROG.adup[id])||0;
+const ASC_MAX=5;const ascCost=(it,n)=>Math.round((it.r>=5?700:450)*(n+1));
+const artStat=(it,k)=>Math.round(it.st[k]*(1+.12*AASC(it.id)));
+function ascendArt(id,btn){const it=ITEM_BY[id];if(!it)return;const n=AASC(id);if(n>=ASC_MAX){toast('이미 최대 돌파입니다');return}
+  const hasDup=ADUP(id)>0,cost=Math.round(ascCost(it,n)*(hasDup?.5:1));if(PROG.gold<cost){toast(`골드가 부족합니다 (${fmt(cost)} 필요)`);return}
+  PROG.gold-=cost;if(hasDup)PROG.adup[id]--;PROG.aasc=PROG.aasc||{};PROG.aasc[id]=n+1;saveProg();flashW();toast(`${it.n} 돌파 ${n+1}단계! 능력치 +${12*(n+1)}%`);
+  const box=btn&&btn.closest('#dArtInfo,#eqInfo,#invInfo');if(box){box.innerHTML=artInfo(it,{card:box.id==='invInfo'});if(box.id==='invInfo'&&typeof renderInv==='function')renderInv()}
+  if(typeof renderDetailArt==='function'&&!$('detail').hidden&&$('detail').classList.contains('arti'))renderDetailArt();}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.ascb');if(b){ascendArt(b.dataset.id,b)}});
 const starsN=n=>`<span>${'★'.repeat(n)}</span>`;
 const artBg=it=>it.art?`--bg:url(${it.art}) 50% 30%/cover no-repeat`:`--bg:linear-gradient(135deg,var(--e-${it.region.el}),#1c1830 80%)`;const artCls=it=>it.art?' hasart':'';
 function artTile(it,o={}){const eq=allEq().includes(it.id);
@@ -6848,11 +6881,13 @@ function artBig(it){return `<div class="abig ${rcls(it.r)}${artCls(it)}"><span c
 const STN={atk:'공격력',def:'방어력',hp:'체력',spd:'스피드',crit:'치명타 확률',cdmg:'치명타 피해'};const STU=k=>(k==='crit'||k==='cdmg')?'%':'';
 function artInfo(it,o={}){if(!it)return `<div class="empty">${o.empty||'아티팩트를 선택하세요.'}</div>`;
   const eq=allEq().includes(it.id),lv=ALV(it.id);
-  const stat=Object.entries(it.st).map(([k,v])=>`<tr><td>${STN[k]}</td><td>${v>0?'+':''}${v}${STU(k)}</td></tr>`).join('');
+  const asc=AASC(it.id),stat=Object.entries(it.st).map(([k,v])=>{const av=artStat(it,k);return `<tr><td>${STN[k]}</td><td>${av>0?'+':''}${av}${STU(k)}${asc?`<em>+${av-v}</em>`:''}</td></tr>`}).join('');
+  const nxt=asc<ASC_MAX?Math.round(ascCost(it,asc)*(ADUP(it.id)>0?.5:1)):0;
+  const ascRow=`<div class="ascrow"><span class="ascst">${Array.from({length:ASC_MAX},(_,i)=>`<i class="${i<asc?'on':''}"></i>`).join('')}<small>돌파 ${asc}/${ASC_MAX}${asc?` · 능력치 +${12*asc}%`:''}</small></span>${asc<ASC_MAX?`<button class="ascb" data-id="${it.id}"><b>돌파</b><small><i class="coin"></i>${fmt(nxt)}${ADUP(it.id)>0?' · 조각 1':''}</small></button>`:'<span class="ascmax">MAX</span>'}</div>`;
   const main=Object.keys(it.st)[0];
   const pic=o.card?`<div class="apic${artCls(it)}" style="${it.key?`--bg:url(${it.key}) 50% 35%/cover no-repeat`:artBg(it)}">${ICON[it.slot]}<span class="rb"></span><span class="rtag">${rtag(it.r)}</span>${eq?`<span class="eqtag"><img src="${FACE_SRC}" alt="">장착 중</span>`:''}<span class="alvt">Lv.${lv}</span><span class="asb">${Array.from({length:5},(_,i)=>`<i class="${i<it.r?'on':''}"></i>`).join('')}</span></div>`:'';
   return `<div class="ah"><span>${it.n}</span><span class="lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span></div>
-  ${pic}<div class="alv"><span>Lv.${lv}</span>${eq&&!o.card?`<span class="eqtag"><img src="${FACE_SRC}" alt="">장착 중</span>`:''}</div>
+  ${pic}<div class="alv"><span>Lv.${lv}</span>${eq&&!o.card?`<span class="eqtag"><img src="${FACE_SRC}" alt="">장착 중</span>`:''}</div>${ascRow}
   ${o.card?'':`<div class="apills">${rpill(it.r)}${elb(it.region.el)}</div><div class="asb">${Array.from({length:5},(_,i)=>`<i class="${i<it.r?'on':''}"></i>`).join('')}</div>`}
   <table class="dstat">${stat}</table>
   <div class="aeff">${it.pas?`<div class="sigp">✦ ${it.pas}</div>`:''}<div>${it.sig?heroEmblem(it.id==='x1'?'rod':it.id==='x3'?'one':'yuria')+' '+HEROES[it.id==='x1'?'rod':it.id==='x3'?'one':'yuria'].name:heroEmblem(CUR)+' '+HEROES[CUR].name} 장착 시 적용<span class="on">ON</span></div><div>착용자의 ${STN[main]} <em>${it.st[main]>0?'+':''}${it.st[main]}</em>, ${it.r>=5?'치명타 확률 <em>7.5%</em> 증가':'치명타 확률 <em>5%</em> 증가'}</div><div>착용자가 ${elb(it.region.el)} 속성 기술 사용 시 위력 <em>${it.r>=5?'10.5%':'7%'}</em> 증가 (유지 1턴)</div>
@@ -6869,10 +6904,10 @@ function renderDetailArt(){
   if(!dArtSel||!eqs.find(i=>i.id===dArtSel))dArtSel=eqs[0]?eqs[0].id:null;
   dArtTab.querySelector('.abigwrap')?.remove();dArtTab.querySelector('.noart')?.remove();
   const w=document.createElement('div');w.className='abigwrap';
-  w.innerHTML=(eqs.length?eqs.map(it=>artBig(it)).join(''):'')+`<button class="abigph" title="아티팩트 장착"><b>+</b><small>ARTIFACT</small></button>`;
+  w.innerHTML=(eqs.length?eqs.map(it=>artBig(it)).join(''):'')+(eqs.length?'':`<button class="abigph" title="아티팩트 장착"><b>+</b><small>ARTIFACT</small></button>`);
   dArtTab.prepend(w);
   w.querySelectorAll('.abig').forEach((el,i)=>{el.style.cursor='pointer';el.onclick=()=>{dArtSel=eqs[i].id;renderDetailArt()};if(eqs[i].id===dArtSel)el.style.boxShadow='0 10px 26px #0004,0 0 0 2px #e2a93a';const w2=eqWhere(eqs[i].id);el.insertAdjacentHTML('afterbegin',`<span class="slotlbl">${w2.k==='char'?HEROES[w2.ch].name:'팀 '+(w2.i+1)}</span>`)});
-  w.querySelector('.abigph').onclick=()=>openEquip({k:'char',ch:CUR});
+  const ph=w.querySelector('.abigph');if(ph)ph.onclick=()=>openEquip({k:'char',ch:CUR});w.querySelectorAll('.abig').forEach(el=>{el.ondblclick=()=>openEquip({k:'char',ch:CUR})});
   if(!eqs.length){const n=document.createElement('div');n.className='noart';n.textContent='장착 중인 아티팩트가 없습니다.';dArtTab.appendChild(n)}
   dArtInfo.innerHTML=eqs.length?artInfo(ITEM_BY[dArtSel]):'';
 }
@@ -7010,7 +7045,7 @@ function showWin(win,drop){
     $('wRetry').onclick=()=>{$('win').hidden=true;if(win&&!RW.last)runNext(true);else runFinish(win)};
     $('wLeave').onclick=()=>{$('win').hidden=true;if(win&&!RW.last)runNext(false);else runFinish(win)};return}
   $('wRetry').textContent='다시 도전';$('wLeave').textContent='전투 나가기';
-  $('wRetry').onclick=()=>{if(reg0){if(entries<=0){toast('오늘의 입장 횟수를 모두 썼습니다');return}entries--}$('win').hidden=true;enterBattle(reg0)};
+  $('wRetry').onclick=()=>{$('win').hidden=true;enterBattle(reg0)};
   $('wLeave').onclick=()=>{$('win').hidden=true;backToLobby()};
 }
 
@@ -7092,7 +7127,7 @@ function renderGacha(){
     return `<button class="gth${i===gSel?' on':''}" data-i="${i}" style="--tb:${b.thumb}"><span class="tbg"></span>${img}<span class="tgl"></span><span class="tsub">${b.id==='std'?'STANDARD':'PICK UP'}</span><span class="tnm">${b.name}</span></button>`}).join('');
   $('gThumbs').querySelectorAll('.gth').forEach(t=>t.onclick=()=>{gSel=+t.dataset.i;renderGacha()});
   $('gPanel').innerHTML=`<span class="gtag">${bn.tag}</span><div class="gname"><i class="st a">✦</i><i class="st b">✦</i><i class="st c">✦</i>${bn.name}<small>${bn.en}</small></div><div class="gline"></div>
-    <div class="gsub">${bn.lines.map(([r,n])=>`${r==='SSR'?rpill(5):rpill(4)}『${n}』 : <b>Pt150</b> 교환 가능`).join('<br>')}</div>
+    <div class="gsub">${bn.lines.map(([r,n])=>`${r==='SSR'?rpill(5):rpill(4)}『${n}』 : <b>Pt100</b> 교환 가능`).join('<br>')}</div>
     ${bn.time?`<div class="gtime">${bn.time}</div>`:''}${bn.pick?`<span class="gpick"><span class="mg">${mgSvg}</span>${bn.pick.n}${rpill(bn.pick.r)}</span>`:''}`;
   const it=ITEM_BY[bn.feat];
   $('gFeat').innerHTML=bn.feat==='stack'?`<span class="ring"></span><div class="fstack">${['w2','s1','g1'].map(id=>`<div class="acardx">${artCardArt(ITEM_BY[id])}</div>`).join('')}</div>`
@@ -7102,9 +7137,9 @@ function renderGacha(){
 const POOL_ART=Object.values(ITEM_BY);
 function rollOne(bn){
   const r=Math.random();
-  if(r<0.015)return{type:'char',id:bn.ch||['rod','yuria','one'][Math.floor(Math.random()*3)]};
-  if(r<0.03){const pick=bn.id==='pick'?ITEM_BY['x1']:bn.id==='picky'?ITEM_BY['x2']:bn.id==='picko'?ITEM_BY['x3']:null;const ssr=POOL_ART.filter(i=>i.r>=5);return{type:'art',it:pick&&Math.random()<.5?pick:ssr[Math.floor(Math.random()*ssr.length)]}}
-  if(r<0.15){const sr=POOL_ART.filter(i=>i.r<5);return{type:'art',it:sr[Math.floor(Math.random()*sr.length)]}}
+  if(r<0.05)return{type:'char',id:bn.ch||['rod','yuria','one'][Math.floor(Math.random()*3)]};
+  if(r<0.10){const pick=bn.id==='pick'?ITEM_BY['x1']:bn.id==='picky'?ITEM_BY['x2']:bn.id==='picko'?ITEM_BY['x3']:null;const ssr=POOL_ART.filter(i=>i.r>=5);return{type:'art',it:pick&&Math.random()<.5?pick:ssr[Math.floor(Math.random()*ssr.length)]}}
+  if(r<0.22){const sr=POOL_ART.filter(i=>i.r<5);return{type:'art',it:sr[Math.floor(Math.random()*sr.length)]}}
   if(r<0.45)return{type:'mat',n:'경험의 서',k:'books',q:1};
   if(r<0.65)return{type:'mat',n:'골드',k:'gold',q:300};
   return{type:'mat',n:'골드',k:'gold',q:200+Math.floor(Math.random()*300)};
@@ -7114,8 +7149,8 @@ const MATIC={books:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 function applyRoll(x){
   if(x.type==='char'){const H=HEROES[x.id],dup=isOwned(x.id);if(dup)chP(x.id).shards+=3;else{PROG.owned.push(x.id);const c=ROSTER.find(c=>c.id===x.id);if(c)c.owned=true}
     return{r:5,html:`<div class="chr"><img class="${x.id==='yuria'?'yu':x.id==='one'?'on':''}" src="${H.img}" alt=""><span class="rb r5"></span><span class="dup">${dup?'중복 → 흑월의 조각 ×3':'NEW!'}</span><span class="plate">${H.name}</span></div>`,name:H.name,isChar:true,chId:x.id}}
-  if(x.type==='art'){const it=x.it,dup=INV.owned.includes(it.id);if(dup)PROG.gold+=it.r>=5?800:300;else INV.owned.push(it.id);
-    return{r:it.r,it,dup,html:artCardArt(it)+(dup?`<span class="dup">중복 → 골드 ${it.r>=5?800:300}</span>`:''),name:it.n}}
+  if(x.type==='art'){const it=x.it,dup=INV.owned.includes(it.id);if(dup){PROG.adup=PROG.adup||{};PROG.adup[it.id]=(PROG.adup[it.id]||0)+1;PROG.gold+=it.r>=5?300:100}else INV.owned.push(it.id);
+    return{r:it.r,it,dup,html:artCardArt(it)+(dup?`<span class="dup">중복 → 돌파 조각 +1 · 골드 ${it.r>=5?300:100}</span>`:''),name:it.n}}
   PROG[x.k]+=x.q;const DESC={books:'마법사의 경험을 담은 책. 레벨 업에 사용한다.',shards:'마력 노드 개방에 사용한다.',gold:'흑월 지구의 통화.'};return{r:0,q:x.q,bg:MATBG[x.k],ic:MATIC[x.k],desc:DESC[x.k],html:`<div class="mat" style="--bg:${MATBG[x.k]}">${MATIC[x.k]}<b>×${x.q}</b><small>${x.n}</small></div>`,name:x.n};
 }
 let gBusy=false,gReveal=[];
@@ -7175,8 +7210,8 @@ function revealCard(c,quiet){
 $('grSkip').onclick=()=>$('grGrid').querySelectorAll('.grc').forEach(c=>revealCard(c,true));
 $('grClose').onclick=()=>{if(gBusy)return;$('gSummon').hidden=true;$('gSummon').className='gsummon';renderGacha()};
 $('gPull1').onclick=()=>pull(1);$('gPull10').onclick=()=>pull(10);
-$('gExchange').onclick=()=>{if(gBusy)return;if(PROG.pts<150){toast(`포인트 교환 — ${150-PROG.pts}Pt 더 필요합니다 (소환 1회당 1Pt)`);return}
-  PROG.pts-=150;const bn=BANNERS[gSel];const x=bn.id==='std'&&Math.random()<.5?{type:'char',id:'rod'}:{type:'art',it:ITEM_BY['s1']};
+$('gExchange').onclick=()=>{if(gBusy)return;if(PROG.pts<100){toast(`포인트 교환 — ${100-PROG.pts}Pt 더 필요합니다 (소환 1회당 1Pt)`);return}
+  PROG.pts-=100;const bn=BANNERS[gSel];const x=bn.id==='std'&&Math.random()<.5?{type:'char',id:'rod'}:{type:'art',it:ITEM_BY['s1']};
   const res=[applyRoll(x)];saveProg();saveInv();renderGacha();playSummon(res)};
 $('gDetail').onclick=()=>toast('확률: SSR 마법사 1.5% · SSR 아티팩트 1.5% · SR 아티팩트 12% · 재료 85% · 10회 소환 시 SR 이상 1개 보장');
 $('gBack').onclick=()=>show('lobby');$('lGacha').onclick=()=>openGacha();
