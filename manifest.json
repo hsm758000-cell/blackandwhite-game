@@ -1,7 +1,7 @@
 {
-"ver": 41,
+"ver": 42,
 "files": {
-"game/index.html": "ebaf1dbbe6813dd3d62cfcc0491059ae62c9814d",
+"game/index.html": "7f47375f7300498605657b893aa0216b451eee3f",
 "game/yuria_ult.mp4": "aeae775a3c2b6cae3b6e7fa58d9d9b69ceedc1f9",
 "game/lily_ult.mp4": "71a2bee6a7db5f053526264f538eaec0b09479a3",
 "game/ult.mp4": "8c4d294ddc2f9e50c1b7c3d856361a4a1bf78839",
@@ -35,6 +35,7 @@
 "game/img/one_cutin.webp": "1a50af8a4d793e22de5bebfd2aa7390fd280436f",
 "game/img/art_g1.webp": "e5045186e064301ead8b5cf847868e07df643a9b",
 "game/img/sigart.webp": "f48be1754b38d2cc6987dd323133ac3ed32e7e46",
+"game/img/lb_lily.webp": "02cb22f70c9953b465fcdeba7a808f69e32296be",
 "game/img/art_f3.webp": "c78aa89057c00fafdf2e3f55e3e01bbf3e8b334f",
 "game/img/face.webp": "50be4bdcfac81fa973b1ed72d953a28f8a61660a",
 "game/img/art_g3.webp": "2f9f8da241b890fbd7560ad9ec7891f67d2987dd",

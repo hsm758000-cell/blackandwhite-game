@@ -2011,7 +2011,7 @@ html.nat,html.nat body{background:#000!important}
 
       <button class="lbanner" id="lBanner" aria-label="로스바이세 픽업">
         <img class="lbimg" src="img/lb_rod.webp" alt="">
-        <span class="ldots"><b class="on"></b><b></b><b></b></span>
+        <span class="ldots"><b class="on"></b><b></b><b></b><b></b></span>
       </button>
 
       <button class="levent l" data-g="3" aria-label="릴리바이스 픽업"><img src="img/lily_face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1"/></svg>7일</span></button>
@@ -6686,7 +6686,7 @@ var ULT_SRC="ult.mp4",YULT_SRC="yuria_ult.mp4",OULT_SRC="one_ult.mp4";const CUTI
 /* ── 로비 동작 ── */
 document.querySelectorAll('[data-soon]').forEach(b=>b.onclick=()=>toast(`${b.dataset.soon} — 준비 중인 메뉴입니다`));
 $('toast').style.zIndex=60;
-let lbIdx=0;const LB=[{ch:'rod',img:'img/lb_rod.webp',t:'로스바이세 픽업',g:0},{ch:'yuria',img:'img/lb_yuria.webp',t:'쿠죠 유리아 픽업',g:1},{ch:'one',img:'img/lb_one.webp',t:'온리 원 신규 캐릭터',g:2}];
+let lbIdx=0;const LB=[{ch:'rod',img:'img/lb_rod.webp',t:'로스바이세 픽업',g:0},{ch:'yuria',img:'img/lb_yuria.webp',t:'쿠죠 유리아 픽업',g:1},{ch:'one',img:'img/lb_one.webp',t:'온리 원 신규 캐릭터',g:2},{ch:'lily',img:'img/lb_lily.webp',t:'릴리바이스 픽업',g:3}];
 function renderLBanner(){const b=LB[lbIdx],el=$('lBanner'),im=el.querySelector('.lbimg');if(im.getAttribute('src')!==b.img){im.classList.remove('in');im.src=b.img;void im.offsetWidth;im.classList.add('in')}el.setAttribute('aria-label',b.t);el.querySelectorAll('.ldots b').forEach((d,i)=>d.classList.toggle('on',i===lbIdx))}
 $('lBanner').onclick=()=>openGacha(LB[lbIdx].g);setInterval(()=>{if(!$('lobby').hidden){lbIdx=(lbIdx+1)%LB.length;renderLBanner()}},5000);renderLBanner();
 document.querySelectorAll('.levent').forEach(b=>b.onclick=()=>openGacha(+b.dataset.g));
