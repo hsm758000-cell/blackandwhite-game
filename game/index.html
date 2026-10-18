@@ -6938,6 +6938,9 @@ function mkUnit(base){return{...base,crit:base.crit??5,cdmg:base.cdmg??150,cur:b
 function mkHero(id='rod'){const H=HEROES[id],b=bonus(id);return mkUnit({...H.base,id,def_:H,hp:H.base.hp+b.hp,atk:H.base.atk+b.atk,def:H.base.def+b.def,spd:H.base.spd+b.spd,crit:H.base.crit+b.crit,cdmg:H.base.cdmg+b.cdmg,ult:0,dom:0,awake:false,aura:null})}
 function partyHeroes(){const ids=(PROG.party||['rod']).filter(id=>id&&HEROES[id]&&isOwned(id));return (ids.length?ids:['rod']).map(id=>mkHero(id))}
 function newBattle(region){const lv=region&&region.lv;const b={region,heroes:partyHeroes(),hi:0,team:(region?region.foes.map(i=>lv?scaleFoe(FOES[i],lv):FOES[i]):[...FOES].sort(()=>Math.random()-.5).slice(0,2).map(f=>scaleFoe(f,Math.max(1,Math.round(partyHeroes().reduce((a,u)=>a+u.lv,0)/Math.max(1,partyHeroes().length)))))).map(mkUnit),idx:0,turn:0,bag:3,busy:true,over:false,dealt:0,domain:null,dom:0,order:null,oi:0};
+  /* 난이도 배율: 런은 RUN.tier, 아티팩트 던전은 region.tier (+던전 추가 배율) */
+  {const T=region&&(region.run?region.run.tier:region.tier);if(T){const dun=!region.run,hm=(T.hpM||1)*(dun?(T.dHpM||1):1),am=(T.atkM||1)*(dun?(T.dAtkM||1):1);
+    b.team.forEach(f=>{f.hp=Math.round(f.hp*hm);f.cur=f.hp;f.atk=Math.round(f.atk*am)});b.acts=T.acts||1;b.turnCap=typeof BATTLE_TURN_CAP!=='undefined'?BATTLE_TURN_CAP:0;b.hitCap=typeof FOE_HIT_CAP!=='undefined'?FOE_HIT_CAP:0}}
   if(region&&region.run&&region.run.hp)b.heroes.forEach(u=>{const v=region.run.hp[u.id];if(v!=null)u.cur=Math.max(0,Math.min(u.hp,v))});b.hi=Math.max(0,b.heroes.findIndex(u=>u.cur>0));
   Object.defineProperties(b,{hero:{get(){return this.heroes[this.hi]}},ult:{get(){return this.hero.ult},set(v){this.hero.ult=v}},awake:{get(){return this.hero.awake},set(v){this.hero.awake=v}},
     domTurns:{get(){return this.domain?this.domain.turns:0}}});return b}
@@ -7987,8 +7990,17 @@ $('lCurPlus')&&($('lCurPlus').onclick=()=>openShop(1));
 
 /* ===== 난이도 ===== */
 const DIFFS=[
-  {i:0,n:'입문',lv:1,drop:.2},{i:1,n:'초급',lv:5,drop:.28},{i:2,n:'중급',lv:10,drop:.36},{i:3,n:'숙련',lv:16,drop:.44},
-  {i:4,n:'상급',lv:22,drop:.52},{i:5,n:'고급',lv:30,drop:.6},{i:6,n:'극한',lv:40,drop:.7},{i:7,n:'심연',lv:50,drop:.8}];
+  /* 밸런스 (시뮬레이션 조정): hpM/atkM = 적 체력·공격 배율, acts = 적의 라운드당 행동 수(파티 인원 대응),
+     step = 런 스테이지마다 오르는 적 레벨, dHpM/dAtkM = 아티팩트 던전 추가 배율 */
+  {i:0,n:'입문',lv:1,drop:.2,hpM:.6,atkM:.6,acts:1,step:4,dHpM:2.5,dAtkM:1.2},
+  {i:1,n:'초급',lv:5,drop:.28,hpM:.8,atkM:1.5,acts:1,step:3,dHpM:2.5,dAtkM:1.4},
+  {i:2,n:'중급',lv:10,drop:.36,hpM:1.3,atkM:1.2,acts:1.5,step:3,dHpM:2,dAtkM:2},
+  {i:3,n:'숙련',lv:16,drop:.44,hpM:1.6,atkM:1.2,acts:1.5,step:3,dHpM:1.6,dAtkM:2},
+  {i:4,n:'상급',lv:22,drop:.52,hpM:4.3,atkM:1.6,acts:2,step:4,dHpM:1.6,dAtkM:2.3},
+  {i:5,n:'고급',lv:30,drop:.6,hpM:4.3,atkM:2.8,acts:2,step:4,dHpM:1.3,dAtkM:2},
+  {i:6,n:'극한',lv:40,drop:.7,hpM:3.6,atkM:3.8,acts:2.5,step:4,dHpM:1.7,dAtkM:2},
+  {i:7,n:'심연',lv:50,drop:.8,hpM:5,atkM:3.8,acts:2.5,step:4,dHpM:1.4,dAtkM:2}];
+const BATTLE_TURN_CAP=15,FOE_HIT_CAP=.35;
 const tierGold=lv=>120+lv*25;
 const tierGems=d=>d?Math.min(40,10+Math.round(d.i*30/7)):12; // 입문 10 → 심연 40
 const tierExp=lv=>60+lv*14;
@@ -8087,7 +8099,7 @@ function applySave(sv){
 /* ===== 전투 개시 — 로그라이크 런 ===== */
 let RUN=null;
 const RUN_REG=()=>REGIONS.filter(r=>!r.boss).slice(0,6);
-function runLv(stage,node){return Math.max(1,RUN.tier.lv+(stage-1)*5+Math.floor((node-1)*.8))}
+function runLv(stage,node){return Math.max(1,RUN.tier.lv+(stage-1)*(RUN.tier.step||5)+Math.floor((node-1)*.8))}
 function openRun(){
   if(PROG.run&&PROG.run.stage){RUN=PROG.run;RUN.tier=DIFFS[RUN.tierI];renderRun();show('run');return}
   pickDiff('전투 개시 — 난이도',t=>{openParty({runStart:true,tier:t,name:'전투 개시',el:'dark',lv:t.lv,foes:[]})});
@@ -8594,7 +8606,7 @@ function damage(att,def,m,o={}){
   const cx=coexist(),tri=trinity(),qd=quad(),dm=domOn()?(att.hero?(qd?1.8:tri?1.6:cx?1.45:1.3):def.hero?(qd?.4:tri?.5:cx?.6:.7):1):1,bk=(!def.hero&&def.broken>0)?1.15:1;
   const sg=(att.hero&&((att.id==='rod'&&hasSig()&&(m.el==='light'||m.el==='dark'))||(att.id==='yuria'&&hasSigY()&&(m.el==='fire'||m.el==='dark'))||(att.id==='one'&&typeof hasSigO==='function'&&hasSigO()&&(m.el==='dark'||m.el==='water'))||(att.id==='lily'&&typeof hasSigL==='function'&&hasSigL()&&m.el==='light')))?1.1:1;
   const pb=(att.id==='yuria'&&def.bleed>0)?1.15:1,pd=(def.hero&&def.id==='rod'&&domOn())?.9:1;
-  let dmg=base*stab*e*(crit?(att.cdmg||150)/100:1)*dm*sg*pb*pd*bk*(.85+Math.random()*.15);let shielded=false;if(def.hero&&def.shield>0){dmg*=.5;shielded=true}
+  let dmg=base*stab*e*(crit?(att.cdmg||150)/100:1)*dm*sg*pb*pd*bk*(.85+Math.random()*.15);let shielded=false;if(def.hero&&def.shield>0){dmg*=.5;shielded=true}if(def.hero&&!att.hero&&B&&B.hitCap)dmg=Math.min(dmg,def.hp*B.hitCap);
   return{dmg:Math.max(1,Math.round(dmg)),e,crit,shielded}}
 /* ===== 로그/렌더 ===== */
 const logEl=$('log');let logN=0;
@@ -8603,7 +8615,7 @@ const elb=e=>`<span class="el" style="background:${ELC[e]}" title="${ELN[e]}">${
 const elsOf=u=>u.els.length>1?dualEmblem(u.els[0],u.els[1]):elb(u.els[0]);
 function render(){
   if(!B)return;
-  $('tTurn').textContent=B.turn;
+  $('tTurn').textContent=B.turnCap?`${B.turn}/${B.turnCap}`:B.turn;
   $('heroes').innerHTML=B.heroes.map(u=>{const r=Math.max(0,u.cur/u.hp);const tags=[];
     if(B.doms&&B.doms[u.id])tags.push(`<span class="tag">${u.H.domain.fxName} ${B.doms[u.id].turns}턴</span>`);if(quad())tags.push('<span class="tag gold">四域共鳴</span>');else if(trinity())tags.push('<span class="tag gold">三域共鳴</span>');else if(coexist())tags.push('<span class="tag gold">領域共存</span>');if(u.stage.atk>0)tags.push(`<span class="tag">공격 +${u.stage.atk}</span>`);if(u.stage.def>0)tags.push(`<span class="tag">방어 +${u.stage.def}</span>`);if(u.shield)tags.push('<span class="tag">결계</span>');if(u.haste)tags.push('<span class="tag">선공</span>');if(u.awake)tags.push('<span class="tag gold">흑월 각성</span>');if(u.bleed>0)tags.push(`<span class="tag warn">출혈 ${u.bleed}</span>`);if(u.id==='lily')tags.push(`<span class="tag">빛의 주먹 ×${fistCount(u)}</span>`);
     return `<div class="unit${B.actId===u.id?' act':''}${alive(u)?'':' down'}" id="u_${u.id}"><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><div class="nm">${elsOf(u)} ${u.name}<small>Lv.${u.lv}</small></div>
@@ -8705,7 +8717,10 @@ function adapt(){
   B.actId=null;B.order=null;B.oi=0;B.doms={};B.rodIn=false;B.lilyIn=false;B.domReq=null;B._fainting=false;
 }
 async function waitPause(){while(paused)await new Promise(r=>setTimeout(r,120))}
-function roundOrder(){const us=[...aliveH().map(u=>({u,p:u.haste?1:0,s:u.spd,h:1})),{u:foe(),p:0,s:foe().spd,h:0}];us.sort((a,b)=>b.p-a.p||b.s-a.s||b.h-a.h);us.forEach(x=>x.u.haste=0);return us.map(x=>x.u)}
+function roundOrder(){const us=[...aliveH().map(u=>({u,p:u.haste?1:0,s:u.spd,h:1})),{u:foe(),p:0,s:foe().spd,h:0}];us.sort((a,b)=>b.p-a.p||b.s-a.s||b.h-a.h);us.forEach(x=>x.u.haste=0);
+  const o=us.map(x=>x.u);/* 난이도별 적 추가 행동: 라운드 사이에 고르게 끼워 넣음 */
+  B.actAcc=(B.actAcc||0)+(B.acts||1);const n=Math.floor(B.actAcc+1e-9);B.actAcc-=n;for(let k=1;k<n;k++){const pos=Math.round(k*o.length/n);o.splice(Math.min(o.length,pos+k-1),0,foe())}
+  return o}
 async function start(region){
   const my=++runId;running=true;domLock=false;
   flashW();await new Promise(r=>setTimeout(r,180));show('battle');try{if(window.NAT&&window.Native)Native.battle(false)}catch(e){}
@@ -8730,6 +8745,7 @@ async function start(region){
   running=false;
 }
 async function newRound(){
+  if(B.turnCap&&B.turn>=B.turnCap){log(`<strong>턴 오버</strong> — ${B.turnCap}턴 안에 적을 쓰러뜨리지 못했다…`,'lose');await sleep(500);await finish(false);return false}
   B.turn++;
   if(domCount()){await domainTick();if(B.over)return false;if(!alive(foe()))return true}
   aliveH().forEach(u=>{u.ult=Math.min(100,u.ult+5);addDom(5,u)});
