@@ -8774,7 +8774,7 @@ async function runDomain(id){
     }else if(id==='lily'){
       const others=Object.keys(B.doms);
       sfx('domain');log(`<strong>영역 전개 — 마지막 생명.</strong>`,'domain');
-      await banner('','마지막 생명','SANCTUARY ✦ OF ✦ WHITE BLOSSOMS','light',h.H.cutin,1500);
+      await banner('','마지막 생명','','light',h.H.cutin,1500);
       if(others.length||B.rodIn){B.lilyIn=true;domTint();await resonance('lily');render()}
       const n=4+fistCount(h);
       log(`하얀 꽃잎이 전장을 뒤덮었다 — <strong>빛의 주먹 ${n}연속</strong>!`,'domain');
