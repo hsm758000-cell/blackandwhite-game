@@ -1823,9 +1823,9 @@ html.nat,html.nat body{background:#000!important}
 .gacha.one .gbg-art.scene{opacity:1;filter:grayscale(.6) brightness(.8);mix-blend-mode:normal;background-size:cover;background-position:50% 30%}
 .gacha.one .gbg-art.scene::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0a0a0ee8 0,#0a0a0e90 45%,#0a0a0e30 100%)}
 .gacha.one .gbg-rays{opacity:.45}
-.ccard[data-id="one"] .arch img{object-position:60% 0;transform:scale(1.9);transform-origin:60% 11%}
-.ctile[data-id="one"] .cimg img{transform:scale(1.9);transform-origin:60% 10%;object-position:60% 0}
-.grc .chr img.on{transform:scale(1.9);transform-origin:60% 10%;object-position:60% 0}
+.ccard[data-id="one"] .arch img{object-position:68% 0;transform:scale(1.7);transform-origin:68% 9%}
+.ctile[data-id="one"] .cimg img{transform:scale(1.7);transform-origin:68% 9%;object-position:68% 0}
+.grc .chr img.on{transform:scale(1.7);transform-origin:68% 9%;object-position:68% 0}
 .detail[data-ch="one"] .ncircle img{object-position:50% 40%;transform:none}
 .detail[data-ch="one"] .dart{height:104%;transform:translateX(-50%)}
 /* 로비 원형 배너 3개 */
@@ -1848,6 +1848,8 @@ html.nat,html.nat body{background:#000!important}
 .ainfo.card .ascrow{background:#f4f4f8}
 .dpanel{overflow:visible}
 .dpanel .film{overflow:auto}
+.ascb.nofrag{filter:grayscale(1);opacity:.55}
+.ascst small{line-height:1.3}
 /* ===== 승리 화면 ===== */
 .wbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.55) saturate(.9);opacity:.9}
 .wgrid{background:linear-gradient(180deg,#0a0e2200 40%,#0a0e22b0)}
@@ -6698,8 +6700,8 @@ async function heroFaint(){const h=B.hero;cls($('heroHit'),'dead');await sleep(9
   $('heroHit').className='hero-hit';const nx=B.heroes.findIndex(alive);B.hi=nx;setHeroVisual();renderMoves();render();flashW();await say(`가랏, <strong>${B.hero.name}</strong>!`);await sleep(500);nextAction()}
 function end(win){
   B.over=true;let dropIt=null;
-  if(win&&B.region&&!B.region.run){const reg=B.region;if(!INV.cleared.includes(reg.id))INV.cleared.push(reg.id);const ch=reg.tier?reg.tier.drop:1;const pool=reg.items.filter(i=>!INV.owned.includes(i.id));
-    if(pool.length&&Math.random()<ch){const it=pool[Math.floor(Math.random()*pool.length)];INV.owned.push(it.id);dropIt=ITEM_BY[it.id]}saveInv()}
+  if(win&&B.region&&!B.region.run){const reg=B.region;if(!INV.cleared.includes(reg.id))INV.cleared.push(reg.id);const ch=reg.tier?reg.tier.drop:1;const pool=reg.items;
+    if(pool.length&&Math.random()<ch){const it=pool[Math.floor(Math.random()*pool.length)];if(INV.owned.includes(it.id)){PROG.adup=PROG.adup||{};PROG.adup[it.id]=(PROG.adup[it.id]||0)+1;dropIt={...ITEM_BY[it.id],frag:true}}else{INV.owned.push(it.id);dropIt=ITEM_BY[it.id]}}saveInv()}
   setTimeout(()=>showWin(win,dropIt),400);return;
   const r=document.createElement('div');r.className='result'+(win?'':' lose');let drop='';
   r.innerHTML=`<div class="box"><h2>${win?'VICTORY':'DEFEAT'}</h2><p>${B.region?B.region.name+' · ':''}${B.turn}턴 · 쓰러뜨린 상대 ${B.team.filter(u=>u.cur<=0).length}/${B.team.length} · 준 피해 ${B.dealt}</p>${drop}
@@ -6967,8 +6969,9 @@ const AASC=id=>(PROG.aasc&&PROG.aasc[id])||0;const ADUP=id=>(PROG.adup&&PROG.adu
 const ASC_MAX=5;const ascCost=(it,n)=>Math.round((it.r>=5?700:450)*(n+1));
 const artStat=(it,k)=>Math.round(it.st[k]*(1+.12*AASC(it.id)));
 function ascendArt(id,btn){const it=ITEM_BY[id];if(!it)return;const n=AASC(id);if(n>=ASC_MAX){toast('이미 최대 돌파입니다');return}
-  const hasDup=ADUP(id)>0,cost=Math.round(ascCost(it,n)*(hasDup?.5:1));if(PROG.gold<cost){toast(`골드가 부족합니다 (${fmt(cost)} 필요)`);return}
-  PROG.gold-=cost;if(hasDup)PROG.adup[id]--;PROG.aasc=PROG.aasc||{};PROG.aasc[id]=n+1;saveProg();flashW();toast(`${it.n} 돌파 ${n+1}단계! 능력치 +${12*(n+1)}%`);
+  if(ADUP(id)<=0){toast(`${it.n}의 돌파 조각이 없습니다 — 같은 아티팩트를 한 번 더 획득하면 조각 1개를 얻습니다`);return}
+  const cost=ascCost(it,n);if(PROG.gold<cost){toast(`골드가 부족합니다 (${fmt(cost)} 필요)`);return}
+  PROG.gold-=cost;PROG.adup[id]--;PROG.aasc=PROG.aasc||{};PROG.aasc[id]=n+1;saveProg();flashW();toast(`${it.n} 돌파 ${n+1}단계! 능력치 +${12*(n+1)}%`);
   const box=btn&&btn.closest('#dArtInfo,#eqInfo,#invInfo');if(box){box.innerHTML=artInfo(it,{card:box.id==='invInfo'});if(box.id==='invInfo'&&typeof renderInv==='function')renderInv()}
   if(typeof renderDetailArt==='function'&&!$('detail').hidden&&$('detail').classList.contains('arti'))renderDetailArt();}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.ascb');if(b){ascendArt(b.dataset.id,b)}});
@@ -6982,8 +6985,8 @@ const STN={atk:'공격력',def:'방어력',hp:'체력',spd:'스피드',crit:'치
 function artInfo(it,o={}){if(!it)return `<div class="empty">${o.empty||'아티팩트를 선택하세요.'}</div>`;
   const eq=allEq().includes(it.id),lv=ALV(it.id);
   const asc=AASC(it.id),stat=Object.entries(it.st).map(([k,v])=>{const av=artStat(it,k);return `<tr><td>${STN[k]}</td><td>${av>0?'+':''}${av}${STU(k)}${asc?`<em>+${av-v}</em>`:''}</td></tr>`}).join('');
-  const nxt=asc<ASC_MAX?Math.round(ascCost(it,asc)*(ADUP(it.id)>0?.5:1)):0;
-  const ascRow=`<div class="ascrow"><span class="ascst">${Array.from({length:ASC_MAX},(_,i)=>`<i class="${i<asc?'on':''}"></i>`).join('')}<small>돌파 ${asc}/${ASC_MAX}${asc?` · 능력치 +${12*asc}%`:''}</small></span>${asc<ASC_MAX?`<button class="ascb" data-id="${it.id}"><b>돌파</b><small><i class="coin"></i>${fmt(nxt)}${ADUP(it.id)>0?' · 조각 1':''}</small></button>`:'<span class="ascmax">MAX</span>'}</div>`;
+  const nxt=asc<ASC_MAX?ascCost(it,asc):0,frag=ADUP(it.id);
+  const ascRow=`<div class="ascrow"><span class="ascst">${Array.from({length:ASC_MAX},(_,i)=>`<i class="${i<asc?'on':''}"></i>`).join('')}<small>돌파 ${asc}/${ASC_MAX}${asc?` · 능력치 +${12*asc}%`:''}<br>조각 ${frag}개 보유 · 중복 획득 시 +1</small></span>${asc<ASC_MAX?`<button class="ascb${frag>0?'':' nofrag'}" data-id="${it.id}"><b>돌파</b><small>조각 1 · <i class="coin"></i>${fmt(nxt)}</small></button>`:'<span class="ascmax">MAX</span>'}</div>`;
   const main=Object.keys(it.st)[0];
   const pic=o.card?`<div class="apic${artCls(it)}" style="${it.key?`--bg:url(${it.key}) 50% 35%/cover no-repeat`:artBg(it)}"><span class="rb"></span><span class="rtag">${rtag(it.r)}</span>${eq?`<span class="eqtag"><img src="${FACE_SRC}" alt="">장착 중</span>`:''}<span class="alvt">Lv.${lv}</span><span class="asb">${Array.from({length:5},(_,i)=>`<i class="${i<it.r?'on':''}"></i>`).join('')}</span></div>`:'';
   return `<div class="ah"><span>${it.n}</span><span class="lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span></div>
@@ -7137,7 +7140,7 @@ function showWin(win,drop){
   $('wAcct').textContent=`계정 Lv.${PROG.acctLv}${lvup?' ▲':''}`;$('wAcctTxt').textContent=`${PROG.acctExp}/${acctNeed(PROG.acctLv)}`;
   $('wAcctFill').style.width='0%';setTimeout(()=>$('wAcctFill').style.width=(PROG.acctExp/acctNeed(PROG.acctLv)*100)+'%',100);
   const tiles=[];
-  if(drop)tiles.push(`<span class="wrw ${rcls(drop.r)}" style="${artBg(drop)}"><span class="first">1st</span><span class="rb"></span><span class="qty">x1</span></span>`);
+  if(drop)tiles.push(`<span class="wrw ${rcls(drop.r)}" style="${artBg(drop)}"><span class="first">${drop.frag?'조각':'1st'}</span><span class="rb"></span><span class="qty">x1</span></span>`);
   tiles.push(`<span class="wrw" style="--bg:linear-gradient(160deg,#5a6070,#1c1c2a)"><i class="coin" style="width:46%;height:46%"></i><span class="qty">x${gold}</span></span>`);
   tiles.push(`<span class="wrw" style="--bg:linear-gradient(160deg,#5b4cff,#14111c)"><i class="gi gem" style="width:46%;height:46%"></i><span class="qty">x${gems}</span></span>`);
   if(shards)tiles.push(`<span class="wrw" style="--bg:linear-gradient(160deg,#3b2a8a,#14111c)"><svg viewBox="0 0 24 24" fill="#c9b6ff"><path d="M12 2l3 7 7 1-5 5 1.5 7L12 18.5 5.5 22 7 15 2 10l7-1Z"/></svg><span class="qty">x${shards}</span></span>`);
@@ -7517,9 +7520,9 @@ function runReward(win){
   const st=RUN.stage,nd=RUN.node,lv=runLv(st,nd),last=st===3&&nd===6;
   if(!win)return{gold:0,exp:0,gems:0,last:true,lose:true};
   let gold=100+lv*20+st*60,exp=60+lv*14+st*20,gems=6+st*3+Math.floor(nd/2),drop=null;
-  if(nd===6){gems+=15;const pool=RUN_REG().flatMap(r=>r.items).filter(i=>!INV.owned.includes(i.id)&&(st<3||i.r>=5));
-    if(pool.length){const it=pool[Math.floor(Math.random()*pool.length)];INV.owned.push(it.id);drop=ITEM_BY[it.id];RUN.loot.arts.push(it.id);saveInv()}else gold+=500}
-  if(last){gold+=5000+lv*100;exp+=3000+lv*100;gems+=300}
+  if(nd===6){gems+=15;const pool=RUN_REG().flatMap(r=>r.items).filter(i=>(st<3||i.r>=5));
+    if(pool.length){const it=pool[Math.floor(Math.random()*pool.length)];if(INV.owned.includes(it.id)){PROG.adup=PROG.adup||{};PROG.adup[it.id]=(PROG.adup[it.id]||0)+1;drop={...ITEM_BY[it.id],frag:true}}else{INV.owned.push(it.id);drop=ITEM_BY[it.id]}RUN.loot.arts.push(it.id);saveInv()}else gold+=500}
+  if(last){gold+=5000+lv*100;exp+=3000+lv*100;gems+=80}
   RUN.loot.gold+=gold;RUN.loot.exp+=exp;RUN.loot.gems+=gems;
   B.heroes.forEach(u=>{RUN.hp[u.id]=Math.max(0,u.cur)});
   return{gold,exp,gems,drop,last};
@@ -7848,6 +7851,7 @@ button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;
 .coex.tri .cx-t{text-shadow:0 0 18px #fff,0 0 36px #ff1c3a,0 0 54px #c9b6ff}
 .coex.tri .cx-bg::before{background:conic-gradient(from 0deg,#c9b6ff50,#ff1c3a50,#ffffff50,#c9b6ff50,#ff1c3a50,#ffffff50,#c9b6ff50);animation:spin 3s linear infinite}
 .banner.mono .kan{text-shadow:0 0 30px #fff}.banner.mono .kor{color:#e8e8f0;text-shadow:0 0 10px #fff}.banner.mono img{filter:grayscale(1) contrast(1.1)}
+.ultv.fit video{object-fit:contain;background:#000}
 .tbroot,.tbroot *{-webkit-tap-highlight-color:rgba(0,0,0,0)!important;-webkit-touch-callout:none}
 .tbroot{user-select:none;-webkit-user-select:none}
 .tbroot button:focus{outline:none}
@@ -8000,7 +8004,7 @@ function vfxDarkStorm(total){return new Promise(res=>{const f=foe();if(!alive(f)
     onEnd:()=>{res()}});kick()})}
 function vfxSkill(id,onHit){const S=window.SkillVFX&&SkillVFX[id];if(!S){onHit({index:0,total:1,weight:1});return sleep(500)}const h=heroBox(),t=foeBox();
   return S.play(skillCv,{from:{x:h.x+h.w*.1,y:h.y-h.h*.1},to:{x:t.x,y:t.y},shakeEl:stageEl,sceneEl:null,speed:SPEED,onHit})}
-function playUltVideo(src){return new Promise(res=>{const o=document.createElement('div');o.className='ultv';o.innerHTML='<video playsinline preload="auto"></video><button class="skip" type="button">건너뛰기 ▸</button>';const v=o.querySelector('video');let done=false;
+function playUltVideo(src){return new Promise(res=>{const o=document.createElement('div');o.className='ultv'+(/one_ult/.test(src)?' fit':'');o.innerHTML='<video playsinline preload="auto"></video><button class="skip" type="button">건너뛰기 ▸</button>';const v=o.querySelector('video');let done=false;
   const finish=ok=>{if(done)return;done=true;o.classList.add('out');v.pause();setTimeout(()=>o.remove(),300);res(ok)};
   v.addEventListener('ended',()=>finish(true));v.addEventListener('error',()=>finish(false));o.querySelector('.skip').onclick=e=>{e.stopPropagation();finish(true)};o.onclick=()=>finish(true);
   tbroot.appendChild(o);v.src=src;v.volume=AUD.vol?AUD.vol('sfx'):1;v.playbackRate=Math.min(4,SPEED);const p=v.play();if(p&&p.catch)p.catch(()=>{v.muted=true;v.play().catch(()=>finish(false))});setTimeout(()=>finish(true),9500/SPEED)})}
