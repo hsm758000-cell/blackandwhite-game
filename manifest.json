@@ -1,7 +1,7 @@
 {
-"ver": 32,
+"ver": 33,
 "files": {
-"game/index.html": "eac838f8e0a4b2501303e3e4c9e249634d875b10",
+"game/index.html": "8e95e79c6185007697c54bf53389e9a1f999859b",
 "game/yuria_ult.mp4": "aeae775a3c2b6cae3b6e7fa58d9d9b69ceedc1f9",
 "game/ult.mp4": "8c4d294ddc2f9e50c1b7c3d856361a4a1bf78839",
 "game/bgm/lobby.mp3": "baf0af96eef08e9379cfca882db0663a15e761f5",
@@ -26,6 +26,7 @@
 "game/img/art_l2.webp": "b5e0ebb5da3d812c7e583526a4fd2b01e86ccff6",
 "game/img/one_char.webp": "a17eceb4e5e10c74fa3b47f320ce46f5531ace9b",
 "game/img/lobby.webp": "578762797d02e6a81c5290d86b9f6940b2496eba",
+"game/img/lb_rod.webp": "b8bc3fdafb272dfa6785a2f962edd89a8f14ff0c",
 "game/img/art_s1.webp": "9e7dfb5f399b786bbacc5dff1e322162094ada51",
 "game/img/yuria_face_sq.webp": "6c618f73278aec55cd5bca0ef6facf4f0e93cff5",
 "game/img/one_cutin.webp": "1a50af8a4d793e22de5bebfd2aa7390fd280436f",
@@ -40,8 +41,10 @@
 "game/img/art_l1.webp": "bf475852273854d778c84e75a783a9c27ba54807",
 "game/img/yuria_cutin.webp": "0d01c180683d1f32cbe4972f38aaf998b9dbf59b",
 "game/img/node_art.webp": "d2cdfde46fdf7e0bf55ef15931fb31b593b9ea85",
+"game/img/lb_one.webp": "88aa2e7d439b355ebb88c6228623b194b0c6ac20",
 "game/img/art_s2.webp": "6607e1dac72be4a00d71c101c7b0ad9d417e714f",
 "game/img/art_d2.webp": "17462e14c1e67a1296c46a446f014eb38cac79eb",
+"game/img/lb_yuria.webp": "d07cc2a2f24193e7c695bb1c44daf497ab4bfc56",
 "game/img/art_f2.webp": "9b8d8cb24035bb2762db320adccea6b2c5bb918d",
 "game/img/yuria_key.webp": "dafce8af80e02e837c90c5b6758b424a264c8e79",
 "game/img/dombg.webp": "c2b64765abef85f7b8d6d33bd36eb912083b5d47",
