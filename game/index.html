@@ -8482,6 +8482,31 @@ button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;
 @keyframes qRing{0%{opacity:.9;transform:translate(-50%,-50%) scale(.3)}100%{opacity:0;transform:translate(-50%,-50%) scale(9)}}
 .coex.quad .cx-t{font-size:clamp(34px,7.5cqw,88px);text-shadow:0 0 18px #fff,0 0 36px #ffe08a,0 0 54px #ff1c3a,0 0 72px #c9b6ff;animation:cxIn .6s 1s cubic-bezier(.2,.8,.3,1) backwards}
 .coex.quad .cx-s{animation:cxIn .6s 1.2s cubic-bezier(.2,.8,.3,1) backwards}
+/* ── 영역 공존/공명: 화면 분할 ── */
+.coex.split{display:block;overflow:hidden;background:#000}
+.coex.split .wedge{position:absolute;inset:0;clip-path:var(--clip);background:var(--c0);overflow:hidden;animation:wIn .55s var(--d) cubic-bezier(.2,.8,.3,1) both;will-change:opacity}
+@keyframes wIn{from{opacity:0}to{opacity:1}}
+.coex.split .wedge .wbg{position:absolute;inset:0;background:radial-gradient(ellipse at var(--cx) var(--cy),var(--c1) 0,var(--c0) 62%,#000 100%)}
+.coex.split .wedge .wbg::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,#0000 0 6px,#ffffff0c 6px 7px);opacity:.8}
+.coex.split .wedge .wfx{position:absolute;inset:0;background:radial-gradient(circle at var(--cx) var(--cy),var(--glow) 0,#0000 38%);opacity:.28}
+.coex.split .wedge img{position:absolute;left:var(--cx);top:var(--iy,-5%);height:112%;width:auto;max-width:none;transform:translateX(-50%);animation:wImg .7s var(--d) cubic-bezier(.2,.8,.3,1) both}
+@keyframes wImg{from{opacity:0;transform:translate(-50%,4%)}to{opacity:1}}
+.coex.split .wedge .wn{will-change:opacity;position:absolute;left:var(--cx);top:calc(var(--cy) + 22cqh);transform:translateX(-50%);font-family:"Jua",sans-serif;font-size:clamp(12px,1.9cqw,22px);color:var(--c2);text-shadow:0 0 10px var(--glow),0 2px 0 #000;white-space:nowrap;background:#00000080;border:1px solid var(--glow);border-radius:999px;padding:.1cqw 1cqw;animation:cxIn .6s calc(var(--d) + .3s) cubic-bezier(.2,.8,.3,1) backwards}
+.coex.split .cracks{position:absolute;inset:0;width:100%;height:100%;z-index:3;overflow:visible}
+.coex.split .ck{fill:none;stroke:#fff;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;stroke-width:2.5px;stroke-dasharray:400;stroke-dashoffset:400;animation:ckDraw .45s .25s cubic-bezier(.2,.8,.3,1) forwards}
+.coex.split .ck.w{stroke-width:10px;opacity:.45;stroke:#bfe4ff}
+@keyframes ckDraw{to{stroke-dashoffset:0}}
+@keyframes ckFlick{50%{opacity:.75}}
+.coex.split .core{position:absolute;left:50%;top:50%;width:5cqw;height:5cqw;min-width:34px;min-height:34px;border-radius:50%;transform:translate(-50%,-50%) scale(0);background:radial-gradient(circle,#fff 0,#fff 30%,#ffffff00 70%);box-shadow:0 0 3cqw #fff,0 0 7cqw #9ad4ff;z-index:4;animation:qCore 1s .55s cubic-bezier(.2,.8,.3,1) both}
+.coex.split.n3 .core{top:52%}
+.coex.split .wflash{position:absolute;inset:0;background:#fff;opacity:0;z-index:5;pointer-events:none}
+.coex.split.hit .wflash{animation:wFlash .5s ease-out forwards}
+@keyframes wFlash{0%{opacity:.95}100%{opacity:0}}
+.coex.split .cx-t{position:absolute;left:50%;top:50%;transform:translate(-50%,-62%);z-index:6;font-size:clamp(34px,8cqw,92px);color:#fff;text-shadow:0 0 14px #fff,0 0 30px #9ad4ff,0 3px 0 #000,0 0 2px #000;animation:cxIn .55s .9s cubic-bezier(.2,.9,.3,1) backwards}
+.coex.split.n3 .cx-t{top:52%}
+.coex.split .cx-s{position:absolute;left:50%;top:50%;transform:translate(-50%,120%);z-index:6;color:#fff;text-shadow:0 0 8px #000,0 0 2px #000;animation:in .6s 1.15s backwards}
+.coex.split.n3 .cx-s{top:52%}
+.coex.split.out{animation:out .45s forwards}
 .banner.light .box{background:linear-gradient(180deg,#1a1830f0,#0d0b14f0)}
 .banner.light .kor{color:#fff3c4;text-shadow:0 0 10px #ffe08a,0 1px 0 #000}.banner.light .eng{color:#ffe08a}
 .ultv.noskip .skip{display:none}
@@ -8788,9 +8813,9 @@ async function afterDomainOpen(id){if(domCount()<2)return;await resonance(id)}
 /* 열려 있는 영역 목록 (열린 순서: 3턴형 → 로스바이세 → 릴리바이스, 마지막에 지금 연 것) */
 function openDoms(last){const a=Object.keys(B.doms||{});if(B.rodIn)a.push('rod');if(B.lilyIn)a.push('lily');return a.filter(k=>k!==last).concat([last])}
 async function resonance(last){const ids=openDoms(last),names=ids.map(k=>DOM_NAMES[k]);sfx('domain',.7);
-  if(ids.length>=4){await showQuad(names);log(`<strong>四域共鳴!</strong> ${names.map(n=>`<em>${n}</em>`).join(' ✦ ')} — 네 영역이 하나로 공명한다. 공격 ×1.8, 받는 피해 ×0.4.`,'domain')}
-  else if(ids.length>=3){await showTrinity(names);log(`<strong>三域共鳴!</strong> ${names.map(n=>`<em>${n}</em>`).join(' ✦ ')} — 세 영역이 공명한다. 공격 ×1.6, 받는 피해 ×0.5.`,'domain')}
-  else{await showCoexist(names[0],names[1]);log(`<strong>영역 공존!</strong> <em>${names[0]}</em> ✦ <em>${names[1]}</em> — 영역이 유지되는 동안 공격 ×1.45, 받는 피해 ×0.6.`,'domain')}}
+  if(ids.length>=4){await showSplit(ids);log(`<strong>四域共鳴!</strong> ${names.map(n=>`<em>${n}</em>`).join(' ✦ ')} — 네 영역이 하나로 공명한다. 공격 ×1.8, 받는 피해 ×0.4.`,'domain')}
+  else if(ids.length>=3){await showSplit(ids);log(`<strong>三域共鳴!</strong> ${names.map(n=>`<em>${n}</em>`).join(' ✦ ')} — 세 영역이 공명한다. 공격 ×1.6, 받는 피해 ×0.5.`,'domain')}
+  else{await showSplit(ids);log(`<strong>영역 공존!</strong> <em>${names[0]}</em> ✦ <em>${names[1]}</em> — 영역이 유지되는 동안 공격 ×1.45, 받는 피해 ×0.6.`,'domain')}}
 /* 릴리바이스 — 빛의 주먹 연타 (기술 다중 시전 / 영역 전개) */
 async function fistBurst(h,n,m,o={}){
   const f=foe();if(!alive(f))return;let fired=0,sum=0;const parts=[];
@@ -8812,10 +8837,25 @@ async function rodBurst(h,n){
         if(++fired>=n)res()}});kick()},i*90/SPEED)}});
   log(`일섬 7연속 — 총 <i>${sum}</i>의 피해!`,'ult');h.haste=1;render();await sleep(300);
 }
-async function showCoexist(a='혈야의 영지',b='흑월의 정원'){const d=document.createElement('div');d.className='coex';d.innerHTML=`<div class="cx-bg"></div><div class="cx-a">${a}</div><div class="cx-x">✦</div><div class="cx-b">${b}</div><div class="cx-t">領域共存</div><div class="cx-s">DOMAIN ✦ COEXISTENCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();await sleep(2100);d.classList.add('out');await sleep(400);d.remove()}
-async function showTrinity(n=['혈야의 영지','여왕의 다크매터','흑월의 정원']){const d=document.createElement('div');d.className='coex tri';d.innerHTML=`<div class="cx-bg"></div><div class="cx-a">${n[0]}</div><div class="cx-x">✦</div><div class="cx-m">${n[1]}</div><div class="cx-x">✦</div><div class="cx-b">${n[2]}</div><div class="cx-t">三域共鳴</div><div class="cx-s">TRINITY ✦ RESONANCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();sfx('boss_ult',.8);await sleep(2600);d.classList.add('out');await sleep(400);d.remove()}
-/* 네 영역 공명: 네 이름이 십자로 모이고 중앙에서 흑·백·홍·자의 빛이 터진다 */
-async function showQuad(n){const d=document.createElement('div');d.className='coex quad';d.innerHTML=`<div class="cx-bg"></div><div class="qx"><span class="qn q1">${n[0]}</span><span class="qn q2">${n[1]}</span><span class="qn q3">${n[2]}</span><span class="qn q4">${n[3]}</span><i class="qc"></i><i class="qr r1"></i><i class="qr r2"></i><i class="qr r3"></i></div><div class="cx-t">四域共鳴</div><div class="cx-s">QUADRUPLE ✦ RESONANCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();sfx('boss_ult',.9);setTimeout(()=>{sfx('domain',.8);flashFx();shakeFx()},1100/SPEED);await sleep(3200);d.classList.add('out');await sleep(400);d.remove()}
+/* ===== 영역 공존/공명 연출: 화면을 캐릭터 수만큼 쪼개고, 각 조각에 그 캐릭터의 영역(색·일러스트)을 채운 뒤 번개 균열로 가른다 ===== */
+const DOM_STYLE={rod:{c0:'#120a22',c1:'#6a4bd6',c2:'#e2d6ff',glow:'#c9b6ff'},yuria:{c0:'#2a0308',c1:'#c40d24',c2:'#ff8a9a',glow:'#ff1c3a'},one:{c0:'#0b0b0f',c1:'#5a5a6a',c2:'#f2f2f8',glow:'#ffffff'},lily:{c0:'#2a1f06',c1:'#c99a1e',c2:'#fff3c4',glow:'#ffe08a'}};
+/* 분할 도형(%): 2 = 사선 좌우, 3 = 위 + 좌하 + 우하, 4 = 비스듬한 십자 */
+const SPLITS={
+  2:{c:[50,50],ends:[[58,0],[42,100]],w:[[0,0,58,0,42,100,0,100],[58,0,100,0,100,100,42,100]],flip:[0,1]},
+  3:{c:[50,52],ends:[[0,14],[100,14],[50,100]],w:[[0,0,100,0,100,14,50,52,0,14],[0,14,50,52,50,100,0,100],[100,14,50,52,50,100,100,100]],flip:[0,0,1]},
+  4:{c:[50,50],ends:[[0,32],[62,0],[100,68],[38,100]],w:[[0,0,62,0,50,50,0,32],[62,0,100,0,100,68,50,50],[100,68,100,100,38,100,50,50],[38,100,0,100,0,32,50,50]],flip:[0,1,1,0]}};
+function centroid(a){let x=0,y=0,A=0;const n=a.length/2;for(let i=0;i<n;i++){const x0=a[2*i],y0=a[2*i+1],x1=a[(2*i+2)%a.length],y1=a[(2*i+3)%a.length],c=x0*y1-x1*y0;A+=c;x+=(x0+x1)*c;y+=(y0+y1)*c}A*=.5;return[x/(6*A),y/(6*A)]}
+function jag(a,b,seg=9,amp=2.6){const pts=[a];for(let i=1;i<seg;i++){const t=i/seg,x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=-(b[1]-a[1]),ny=b[0]-a[0],L=Math.hypot(nx,ny)||1,k=(Math.random()-.5)*amp*(1-Math.abs(t-.5)*.6);pts.push([x+nx/L*k,y+ny/L*k])}pts.push(b);return pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}
+async function showSplit(ids){
+  const n=Math.min(4,Math.max(2,ids.length)),sp=SPLITS[n],lvl=n>=4?['四域共鳴','QUADRUPLE ✦ RESONANCE']:n>=3?['三域共鳴','TRINITY ✦ RESONANCE']:['領域共存','DOMAIN ✦ COEXISTENCE'];
+  const d=document.createElement('div');d.className='coex split n'+n;
+  const wedges=ids.slice(0,n).map((id,i)=>{const st=DOM_STYLE[id]||DOM_STYLE.rod,poly=sp.w[i],[cx,cy]=centroid(poly),H=(B.heroes.find(u=>u.id===id)||{}).H||{},img=H.img||'';
+    return `<div class="wedge" style="--clip:polygon(${Array.from({length:poly.length/2},(_,k)=>poly[2*k]+'% '+poly[2*k+1]+'%').join(',')});--c0:${st.c0};--c1:${st.c1};--c2:${st.c2};--glow:${st.glow};--cx:${cx.toFixed(1)}%;--cy:${cy.toFixed(1)}%;--iy:${Math.max(-6,Math.min(30,cy-46)).toFixed(1)}%;--d:${i*.12}s"><i class="wbg"></i><i class="wfx"></i>${img?`<img src="${img}" alt="" style="${sp.flip[i]?'transform:translateX(-50%) scaleX(-1)':''}">`:''}<span class="wn">${DOM_NAMES[id]||''}</span></div>`}).join('');
+  const cracks=sp.ends.map(e=>{const a=jag(sp.c,e),b=jag(sp.c,e);return `<polyline class="ck w" points="${a}"/><polyline class="ck" points="${b}"/>`}).join('');
+  d.innerHTML=`${wedges}<svg class="cracks" viewBox="0 0 100 100" preserveAspectRatio="none">${cracks}</svg><i class="core"></i><i class="wflash"></i><div class="cx-t">${lvl[0]}</div><div class="cx-s">${lvl[1]}</div>`;
+  tbroot.appendChild(d);flashFx();shakeFx();if(n>=3)sfx('boss_ult',.8);
+  setTimeout(()=>{sfx('domain',.8);shakeFx();d.classList.add('hit')},(n>=4?1100:800)/SPEED);
+  await sleep(n>=4?3300:n>=3?2800:2300);d.classList.add('out');await sleep(450);d.remove()}
 async function domainTick(){
   for(const id of Object.keys(B.doms)){const d=B.doms[id];if(!d)continue;d.turns--;
     if(d.turns>0){
