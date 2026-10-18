@@ -1959,6 +1959,22 @@ html.nat,html.nat body{background:#000!important}
         <div class="lgfoot" id="lgFoot">저장 위치 확인 중…</div>
       </div>
     </section>
+    <!-- ===== 로비 ===== -->
+    <style id="lobby-art-styles">
+/* Lobby image buttons: artwork includes its own caption. */
+#lobby { --lobby-side-size: 5.6cqw; --lobby-dock-size: 7.6cqw; }
+#lobby .lobby-art-button { position: relative; display: flex; align-items: flex-end; justify-content: center; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; gap: 0; cursor: pointer; flex-shrink: 0; }
+#lobby .lmenu .lobby-art-button { width: var(--lobby-side-size); height: var(--lobby-side-size); }
+#lobby .ldock .lobby-art-button { width: var(--lobby-dock-size); height: var(--lobby-dock-size); }
+#lobby .ldock #lDungeon { width: calc(var(--lobby-dock-size) * 1.12); height: calc(var(--lobby-dock-size) * 1.12); }
+#lobby .lobby-art { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; pointer-events: none; user-select: none; transition: transform .15s ease, filter .15s ease; }
+#lobby .lobby-art-button:hover .lobby-art { transform: translateY(-2px) scale(1.04); filter: brightness(1.12); }
+#lobby .lobby-art-button:active .lobby-art { transform: scale(.96); }
+#lobby .lobby-art-button:focus-visible { outline: 2px solid #fff; outline-offset: 4px; border-radius: 8px; }
+#lobby .lmenu { gap: .45cqw; }
+#lobby .lmitems { gap: .65cqw; align-items: center; }
+#lobby .ldock { gap: 1cqw; }
+#lobby .lobby-art-button > .dot { position: absolute; right: 5%; top: 7%; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #lobby .lobby-art { transition: none; } }
 </style>
     <section class="scr" id="lobby" hidden>
@@ -2295,6 +2311,7 @@ html.nat,html.nat body{background:#000!important}
         <div class="partis" id="pArtis"></div>
       </div>
       <div class="pbottom">
+        <button class="ib dark" data-soon="편성 메뉴" aria-label="메뉴"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <div class="ptabs" id="pTabs"><b class="on">1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b></div>
         <button class="ib dark" id="pReset" aria-label="초기화"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></button>
         <button class="pillb" id="pOrder">순서 변경</button>
@@ -7119,7 +7136,7 @@ $('piAuto').onclick=()=>{PROG.party=['rod',null,null,null];renderPinfo();toast('
 $('piSave').onclick=()=>{saveProg();flashW();toast('편성을 저장했습니다')};
 
 /* 로비 MENU에 편성 추가 */
-(()=>{const m=$('lMenuItems');const b=document.createElement('button');b.className='lmb';b.innerHTML='<span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7" height="14" rx="1.5"/><rect x="14" y="5" width="7" height="14" rx="1.5"/><path d="M6.5 9v6M17.5 9v6"/></svg></span><span class="llbl">편성</span>';b.onclick=openParty;m.appendChild(b)})();
+/* 로비 메뉴의 편성 항목 제거 (편성은 전투 개시 / 던전 입장 시 열림) */
 
 /* ===== 전투 결과 WIN ===== */
 function showWin(win,drop){
