@@ -1831,7 +1831,7 @@ html.nat,html.nat body{background:#000!important}
 .detail[data-ch="one"] .ncircle img{object-position:50% 40%;transform:none}
 .detail[data-ch="one"] .dart{height:104%;transform:translateX(-50%)}
 /* 로비 원형 배너 3개 */
-.levent{top:30%}.levent.y{top:9%}.levent.o{top:51%;box-shadow:0 0 0 .5cqw #ffffff2a,0 0 1.2cqw #ffffff80,0 4px 12px #000a}
+.levent{top:24%}.levent.y{top:5%}.levent.l{top:62%;box-shadow:0 0 0 .5cqw #ffffff2a,0 0 1.2cqw #ffe08a90,0 4px 12px #000a}.levent.l img{object-position:50% 40%}.levent.o{top:43%;box-shadow:0 0 0 .5cqw #ffffff2a,0 0 1.2cqw #ffffff80,0 4px 12px #000a}
 .levent.o img{object-position:50% 50%}
 /* 던전 패널 접기 */
 .dpanel{transition:transform .35s cubic-bezier(.2,.8,.3,1)}
@@ -1852,6 +1852,18 @@ html.nat,html.nat body{background:#000!important}
 .dpanel .film{overflow:auto}
 .ascb.nofrag{filter:grayscale(1);opacity:.55}
 .ascst small{line-height:1.3}
+
+/* 릴리바이스 */
+.ccard[data-id="lily"] .arch img{object-position:50% 0;transform:scale(2.4);transform-origin:50% 8%}
+.ctile[data-id="lily"] .cimg img{transform:scale(2.3);transform-origin:50% 8%;object-position:50% 0}
+.grc .chr img.li{transform:scale(2.2);transform-origin:50% 8%;object-position:50% 0}
+.detail[data-ch="lily"] .ncircle img{object-position:50% 45%;transform:none}
+.detail[data-ch="lily"] .dart{height:104%;transform:translateX(-50%)}
+.gacha.lily .gstage .ghero.li{right:12%;top:1%;height:98%;bottom:auto;width:auto;filter:drop-shadow(0 0 1.5cqw #ffe08a90)}
+.gacha.lily .gbg-art.scene{opacity:1;filter:brightness(.85);mix-blend-mode:normal;background-size:cover;background-position:50% 35%}
+.gacha.lily .gbg-art.scene::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#141a2ee8 0,#141a2e90 45%,#141a2e30 100%)}
+.gacha.lily .gbg-rays{opacity:.55}
+.wart[data-ch="lily"]{left:16%}
 /* ===== 승리 화면 ===== */
 .wbg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.55) saturate(.9);opacity:.9}
 .wgrid{background:linear-gradient(180deg,#0a0e2200 40%,#0a0e22b0)}
@@ -2002,6 +2014,7 @@ html.nat,html.nat body{background:#000!important}
         <span class="ldots"><b class="on"></b><b></b><b></b></span>
       </button>
 
+      <button class="levent l" data-g="3" aria-label="릴리바이스 픽업"><img src="img/lily_face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1"/></svg>7일</span></button>
       <button class="levent o" data-g="2" aria-label="온리 원 픽업"><img src="img/one_face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1"/></svg>7일</span></button>
       <button class="levent y" data-g="1" aria-label="쿠죠 유리아 픽업"><img src="img/yuria_face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>7일</span></button>
       <button class="levent" data-g="0" aria-label="로스바이세 픽업"><img src="img/face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>6일</span></button>
@@ -5655,6 +5668,554 @@ window.SkillVFX = window.SkillVFX || {};
 window.SkillVFX[DEF.id] = { def: DEF, play: (canvas, opts) => VFX.play(DEF, canvas, opts), snapshot: (canvas, t, opts) => VFX.snapshot(DEF, canvas, t, opts) };
 })();
 
+/* =========================================================
+   LightFist VFX v4 — 빛의 주먹 · 균열 강타 (캔버스 2D, 배경 투명)
+   ---------------------------------------------------------
+   정면을 향한 거대한 빛의 주먹이 안쪽(먼 곳)에서 커지며 날아와 대상을 강타하고,
+   충격 지점의 공간에 유리처럼 금이 간다 (조각은 떨어지지 않고 금만 남았다가 사라짐).
+   시전자 모션 없음.
+   사용법
+     1) 이 파일 내용을 게임 HTML의 <script> 안에 그대로 붙여넣기
+     2) 스킬 사용 시:
+          LightFist.spawn(x, y, {               // x,y = 대상(충격 지점)
+            scale: 1,          // 크기 배율 (화면 짧은 변 700px 기준 1)
+            size: 1,           // 주먹 크기 배율 (scale 과 별도)
+            tilt: -0.2,        // 주먹 기울기(라디안)
+            screen: true,      // 화면 플래시·색수차 연출
+            onHit(fx){},       // 강타 순간 (0.22초) — 데미지/넉백
+            onEnd(fx){}        // 종료 (1.8초)
+          });
+     3) 게임 루프 매 프레임:
+          const ts = LightFist.timeScale();       // 히트스톱 0~1 (선택)
+          const [sx, sy] = LightFist.shake();     // 카메라 흔들림 (선택)
+          ctx.save(); ctx.translate(sx, sy);
+          ...게임 화면 그리기...
+          LightFist.draw(ctx);                    // ★ 게임 화면을 다 그린 뒤 (유리 굴절이 화면을 읽음)
+          ctx.restore();
+          LightFist.update(dt);
+   타이밍(초): 0.00~0.22 주먹 접근 (작은 점 → 화면 가득, 잔상·속도선)
+               0.22 강타 — 히트스톱, 충격파, 금이 바깥으로 번짐 (onHit)
+               0.22~0.5 주먹 압착 후 빠짐 / 0.5~1.3 금이 유지 (미세 어긋남·반짝임) / ~1.8 금이 옅어지며 종료
+   ========================================================= */
+(function (global) {
+  const DUR = 1.8, HIT = 0.22, HOLD = 0.22, STOP = 0.1, OPEN = 0.24, CRACK_FADE = 1.3;
+  const R = (a, b) => a + Math.random() * (b - a);
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const easeIn = x => Math.pow(clamp(x), 2.6);
+  const easeOut = x => 1 - Math.pow(1 - clamp(x), 3);
+  const easeOutQ = x => 1 - Math.pow(1 - clamp(x), 5);
+  const list = [];
+  /* 색 테마: 'gold'(기본) | 'red'(붉은 주황). red 는 금빛 계열 색의 색상을 붉은 주황으로 회전 */
+  let THEME = 'gold';
+  const CACHE = {};
+  function C(r, g, b) {
+    if (THEME === 'gold') return r + ',' + g + ',' + b;
+    const key = r + ',' + g + ',' + b; if (CACHE[key]) return CACHE[key];
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let l = (mx + mn) / 2;
+    let h = 0, s = 0, l2;
+    if (d) { s = d / (1 - Math.abs(2 * l - 1)); h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
+    if (d < .02 && l > .9) { h = 45; s = 1; l = .94; }                                    // 순백도 살짝 물들임
+    h = (h - 27 + 360) % 360;                                                             // 금빛(≈45°) → 붉은 주황(≈18°)
+    s = Math.min(1, s * 1.2 + .3); if (l > .5) l = .5 + (l - .5) * .55;                 // 채도↑, 밝은 색은 조금 진하게
+    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+    const [R1, G1, B1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return CACHE[key] = Math.round((R1 + m) * 255) + ',' + Math.round((G1 + m) * 255) + ',' + Math.round((B1 + m) * 255);
+  }
+
+  function spawn(x, y, o = {}) {
+    const S = o.scale ?? 1, F = (o.size ?? 1) * S, tilt = o.tilt ?? -0.2;
+    /* 자연스러운 균열: 불규칙한 각도의 주 균열이 지그재그로 뻗고, 도중에 가지가 갈라짐.
+       각 마디는 등장 시각(t0)을 가지며, 몇 마디씩 몰아서 "쩌적" 하고 뻗었다가 잠깐 멈추길 반복 */
+    const segs = [];
+    const grow = (x0, y0, ang, len, w, depth, t0) => {
+      let x = x0, y = y0, a = ang, left = len, t = t0, burst = 2 + (Math.random() * 3 | 0);
+      while (left > 0) {
+        const step = Math.min(left, R(16, 34)); a += (Math.random() < .25 ? R(-.55, .55) : R(-.14, .14)) + (ang - a) * .3;   // 대체로 곧게, 가끔 날카롭게 꺾임
+        const nx = x + Math.cos(a) * step, ny = y + Math.sin(a) * step * .9;
+        segs.push({ x0: x, y0: y, x1: nx, y1: ny, t0: t, w: w * (.3 + .7 * Math.pow(left / len, 1.5)), depth });
+        x = nx; y = ny; left -= step;
+        t += .006; if (--burst <= 0) { t += R(.03, .07); burst = 2 + (Math.random() * 3 | 0); }   // 쩌-적: 몰아서 뻗고 멈춤
+        if (depth < 2 && left > 26 && Math.random() < (depth ? .1 : .22)) {
+          const side = Math.random() < .5 ? 1 : -1;
+          grow(x, y, a + side * R(.45, 1.0), left * R(.35, .7), w * .6, depth + 1, t + R(0, .03));
+        }
+      }
+    };
+    const nMain = 18 + (Math.random() * 5 | 0), baseA = R(0, 6.283);      // 짧은 균열을 많은 방향으로
+    for (let i = 0; i < nMain; i++) {
+      const ang = baseA + i / nMain * 6.283 + R(-.12, .12);
+      const r0 = R(22, 36), long = Math.random() < .25;                    // 일부만 조금 길게
+      grow(Math.cos(ang) * r0, Math.sin(ang) * r0 * .9, ang, long ? R(130, 190) : R(60, 120), long ? R(2.4, 3.2) : R(1.6, 2.6), 0, OPEN + R(0, .05));
+    }
+    // 중심 근처의 짧은 가로지르는 금 (불규칙, 몇 개만)
+    for (let i = 0; i < 6; i++) {
+      const ang = R(0, 6.283), r = R(40, 80), span = R(.3, .6), n = 3;
+      let pa = ang, px = Math.cos(pa) * r, py = Math.sin(pa) * r * .9, t = OPEN + R(.08, .2);
+      for (let k = 1; k <= n; k++) { const qa = ang + span * k / n, rr = r * R(.9, 1.12), qx = Math.cos(qa) * rr, qy = Math.sin(qa) * rr * .9; segs.push({ x0: px, y0: py, x1: qx, y1: qy, t0: t, w: 1.4, depth: 2 }); px = qx; py = qy; t += .01; }
+    }
+    // 충격 중심의 깨진 테두리 (주먹 자국)
+    const rimPts = []; for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283, r = R(24, 38); rimPts.push([Math.cos(a) * r, Math.sin(a) * r * .9]); }
+    const pick = () => segs[Math.random() * segs.length | 0];
+    const dust = []; for (let i = 0; i < 30; i++) { const g = pick(); dust.push({ px: g.x1, py: g.y1, t0: Math.max(g.t0, OPEN) + R(0, .6), life: R(.5, 1.1), vx: R(-30, 30), vy: R(-20, 40), s: R(1, 2.6) }); }
+    const glints = []; for (let i = 0; i < 18; i++) { const g = pick(); glints.push({ px: g.x1, py: g.y1, t0: g.t0 + R(0, .5), life: R(.15, .35), s: R(6, 16) }); }
+    const rays = []; for (let i = 0; i < 26; i++) rays.push({ a: R(0, 6.283), L: R(250, 1000), w: R(3, 14), t0: HIT + R(0, .02), life: R(.25, .45), col: [C(255,255,255), C(255,245,200), C(255,225,140)][i % 3] });
+    const debris = []; for (let i = 0; i < 45; i++) { const a = R(0, 6.283); debris.push({ a, v: R(300, 1200), t0: HIT + R(0, .03), life: R(.35, .8), s: R(1, 3) }); }
+    const ghosts = [];
+
+    const fx = { x, y, S, F, tilt, theme: 'gold', segs, rimPts, dust, glints, rays, debris, ghosts, lastGhost: -1, t: 0, hit: false,
+      screen: o.screen !== false, onHit: o.onHit, onEnd: o.onEnd };
+    list.push(fx);
+    return fx;
+  }
+
+  function update(dt) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i]; fx.t += dt;
+      if (!fx.hit && fx.t >= HIT) { fx.hit = true; fx.onHit && fx.onHit(fx); }
+      if (fx.t > DUR) { list.splice(i, 1); fx.onEnd && fx.onEnd(fx); }
+    }
+  }
+  function timeScale() { let s = 1; for (const fx of list) { const t = fx.t; if (t >= HIT && t < HIT + STOP) s = 0; } return s; }
+  function shake() {
+    let amp = 0;
+    for (const fx of list) {
+      const t = fx.t;
+      if (t > HIT) amp = Math.max(amp, Math.max(0, 1 - (t - HIT) / .45) * 26 * fx.S);
+    }
+    return [(Math.random() - .5) * amp, (Math.random() - .5) * amp];
+  }
+  function clear() { list.length = 0; }
+  function active() { return list.length; }
+
+  function fullFill(ctx, style, op) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = op; ctx.fillStyle = style;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
+  }
+  
+  /* ---------- 정면 주먹 ---------- */
+  /* 로컬 단위: 주먹 폭 약 150, 높이 약 140. 위쪽에 마디 4개, 아래로 접힌 손가락, 오른쪽 아래를 감싼 엄지 */
+  /* 참고 이미지에서 추출한 주먹 윤곽 (중심 기준, 폭 170 단위). OUT = 바깥 실루엣, IN = 손가락 홈·엄지 주름 */
+  const OUT = [-76.0,-41.0,-83.0,-26.3,-86.1,-17.0,-86.1,-11.6,-82.2,-4.7,-79.1,10.0,-73.7,25.5,-69.8,33.2,-62.9,39.4,-47.4,40.9,-42.0,38.6,-36.6,43.3,-32.7,49.4,-27.3,51.8,-20.4,51.8,-13.4,50.2,-6.5,43.3,-1.8,47.1,-1.8,49.4,-7.2,54.1,-9.6,54.8,-7.2,59.5,3.6,62.6,12.1,61.8,14.4,63.3,21.3,64.9,34.5,71.8,39.9,71.8,46.8,69.5,49.9,65.7,51.5,64.9,53.0,65.7,60.8,59.5,78.5,40.9,82.4,34.0,83.2,27.0,82.4,23.2,80.1,20.1,70.8,39.4,66.2,43.3,62.3,40.2,70.0,13.9,71.6,-5.4,70.0,-9.3,66.9,-27.1,62.3,-30.9,61.5,-46.4,60.0,-52.6,53.8,-56.4,47.6,-58.0,26.8,-57.2,-5.7,-63.4,-19.6,-62.6,-28.1,-60.3,-45.9,-49.5,-69.8,-44.8];
+  const IN = [[-15.0,-7.0,-15.7,-5.4,-13.4,-1.6,-12.7,18.5,-11.9,19.3,-11.9,22.4,-11.1,23.2,-11.1,28.6,-10.3,29.3,-10.3,33.2,-9.6,34.0,-8.8,44.8,-6.5,43.3,-4.9,44.0,-4.9,43.3,-5.7,42.5,-5.7,38.6,-7.2,34.8,-7.2,30.1,-8.0,29.3,-8.0,24.7,-8.8,23.9,-8.8,19.3,-9.6,18.5,-9.6,11.6,-10.3,10.8,-10.3,2.3,-11.1,1.5,-11.1,-2.3],[-49.0,-15.5,-49.7,-13.9,-49.0,-9.3,-49.7,-8.5,-51.3,-8.5,-50.5,-5.4,-52.1,-4.7,-52.8,-3.1,-48.2,3.8,-47.4,13.9,-46.7,14.7,-45.9,30.9,-44.3,34.8,-44.3,37.8,-43.6,39.4,-42.0,38.6,-40.5,39.4,-40.5,37.8,-42.8,32.4,-43.6,24.7,-44.3,23.9,-45.1,10.8,-45.9,10.0,-45.9,-3.1,-46.7,-3.9,-47.4,-15.5],[27.5,-20.9,26.8,-20.1,27.5,-18.6,27.5,-12.4,28.3,-11.6,28.3,-6.2,29.1,-5.4,29.1,-1.6,29.8,-0.8,29.8,28.6,29.1,29.3,29.1,42.5,28.3,43.3,28.3,45.6,24.4,49.4,16.7,52.5,7.4,52.5,6.7,51.8,2.0,51.0,-1.8,48.7,-3.4,51.0,2.0,54.1,9.0,54.8,10.5,57.2,10.5,60.3,11.3,61.0,10.5,61.8,13.6,62.6,12.8,57.2,12.1,56.4,12.8,54.8,16.7,54.8,17.5,54.1,19.8,54.1,20.6,53.3,24.4,52.5,28.3,50.2,31.4,47.1,33.7,47.1,34.5,47.9,40.7,47.9,41.4,48.7,43.0,48.7,47.6,54.1,47.6,55.6,49.2,58.7,49.2,66.4,52.3,64.9,52.3,62.6,51.5,61.8,50.7,55.6,47.6,50.2,49.2,48.7,53.8,48.7,54.6,47.9,58.4,47.1,65.4,42.5,62.3,40.2,53.0,46.3,36.0,46.3,31.4,43.3,32.2,-2.3,30.6,-6.2,30.6,-9.3,33.7,-14.7,32.2,-15.5,30.6,-13.2,29.8,-13.9,29.8,-20.1],[63.8,-29.4,63.8,-18.6,64.6,-23.2,65.4,-24.0,65.4,-28.6]];
+  function poly(ctx, A, k) { ctx.moveTo(A[0] * k, A[1] * k); for (let i = 2; i < A.length; i += 2) ctx.lineTo(A[i] * k, A[i + 1] * k); ctx.closePath(); }
+  function fistBody(ctx, k) { ctx.beginPath(); poly(ctx, OUT, k); }
+  function fistDetail(ctx, k, alpha) {
+    ctx.fillStyle = `rgba(${C(205,112,18)},${alpha})`;
+    ctx.beginPath(); for (const A of IN) poly(ctx, A, k); ctx.fill();
+  }
+  function drawFist(ctx, x, y, k, rot, alpha, hot) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [lw, al] of [[44, .05], [22, .1], [9, .18]]) { fistBody(ctx, k); ctx.strokeStyle = `rgba(${C(255,210,100)},${al * alpha})`; ctx.lineWidth = lw * k; ctx.lineJoin = 'round'; ctx.stroke(); }
+    ctx.globalCompositeOperation = 'source-over';
+    fistBody(ctx, k);
+    const g = ctx.createRadialGradient(-10 * k, -10 * k, 0, 0, 0, 95 * k);        // 중심 흰색 → 가장자리 금빛 (참고 이미지의 평면적인 흰 주먹)
+    if (THEME === 'red') { g.addColorStop(0, `rgba(255,214,170,${alpha})`); g.addColorStop(.5, `rgba(255,128,62,${alpha})`); g.addColorStop(1, `rgba(214,48,20,${alpha})`); }
+    else { g.addColorStop(0, `rgba(255,255,255,${alpha})`); g.addColorStop(.7, `rgba(255,250,228,${alpha})`); g.addColorStop(1, `rgba(255,222,140,${alpha})`); }
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = `rgba(${C(226,140,30)},${alpha})`; ctx.lineWidth = 3.5 * k; ctx.lineJoin = 'round'; ctx.stroke();
+    fistDetail(ctx, k, alpha);
+    if (hot > 0 && THEME !== 'red') { ctx.globalCompositeOperation = 'lighter'; fistBody(ctx, k); ctx.fillStyle = `rgba(${C(255,255,255)},${.25 * hot * alpha})`; ctx.fill(); }
+    ctx.restore();
+  }
+
+  /* ---------- 균열 (금만, 조각은 떨어지지 않음) ---------- */
+  function star4(ctx, x, y, s, al) {
+    ctx.fillStyle = `rgba(${C(255,250,230)},${al})`; ctx.beginPath();
+    ctx.moveTo(x, y - s); ctx.lineTo(x + s * .12, y - s * .12); ctx.lineTo(x + s, y); ctx.lineTo(x + s * .12, y + s * .12);
+    ctx.lineTo(x, y + s); ctx.lineTo(x - s * .12, y + s * .12); ctx.lineTo(x - s, y); ctx.lineTo(x - s * .12, y - s * .12); ctx.closePath(); ctx.fill();
+  }
+  function drawRift(ctx, fx) {
+    const t = fx.t, S = fx.S, x = fx.x, y = fx.y;
+    const fade = t < CRACK_FADE ? 1 : clamp(1 - (t - CRACK_FADE) / (DUR - CRACK_FADE));
+    if (fade <= 0) return;
+    const prog = clamp((t - OPEN) / .25);
+
+    // 보이는 마디를 두께 단계별로 모아 한 번에 그림 (성능)
+    const B = [[], [], [], []];
+    for (const g of fx.segs) {
+      if (t < g.t0) continue;
+      const f = clamp((t - g.t0) / .006);                           // 마디가 뻗는 순간
+      const bi = g.w > 3 ? 3 : g.w > 2 ? 2 : g.w > 1.2 ? 1 : 0;
+      B[bi].push(g, f);
+    }
+    const W = [1.1, 1.8, 2.6, 3.4];
+    const pass = (mult, rgb, al, op) => {
+      ctx.globalCompositeOperation = op;
+      for (let bi = 0; bi < 4; bi++) {
+        const arr = B[bi]; if (!arr.length) continue;
+        ctx.strokeStyle = `rgba(${rgb},${al * fade})`; ctx.lineWidth = W[bi] * mult * S; ctx.beginPath();
+        for (let i = 0; i < arr.length; i += 2) { const g = arr[i], f = arr[i + 1]; ctx.moveTo(x + g.x0 * S, y + g.y0 * S); ctx.lineTo(x + (g.x0 + (g.x1 - g.x0) * f) * S, y + (g.y0 + (g.y1 - g.y0) * f) * S); }
+        ctx.stroke();
+      }
+    };
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    pass(2.2, C(20,12,0), .55, 'source-over');                          // 그림자 (깊이)
+    pass(3.2, C(255,200,90), .16, 'lighter');                           // 금빛 번짐
+    pass(1.0, C(255,236,190), .95, 'lighter');                          // 본선
+    pass(.38, C(255,255,255), 1, 'lighter');                            // 흰 심
+
+    // 충격 중심: 밝은 자국 + 깨진 테두리
+    { const r = 40 * S * easeOutQ(prog);
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, r * 1.6));
+      g.addColorStop(0, `rgba(${C(255,250,235)},${.55 * fade})`); g.addColorStop(.6, `rgba(${C(255,235,180)},${.22 * fade})`); g.addColorStop(1, `rgba(${C(255,220,140)},0)`);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 7); ctx.fill();
+      const k = easeOutQ(prog); ctx.strokeStyle = `rgba(${C(255,248,225)},${.85 * fade * k})`; ctx.lineWidth = 1.3 * S; ctx.beginPath();
+      fx.rimPts.forEach((p, i) => { const px = x + p[0] * S * k, py = y + p[1] * S * k; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+      ctx.closePath(); ctx.stroke(); }
+
+    // 가루 / 반짝임
+    ctx.globalCompositeOperation = 'lighter';
+    for (const d of fx.dust) { const age = t - d.t0; if (age < 0 || age > d.life) continue; ctx.fillStyle = `rgba(${C(255,250,230)},${(1 - age / d.life) * fade})`; ctx.fillRect(x + (d.px + d.vx * age) * S, y + (d.py + d.vy * age + 260 * age * age) * S, d.s * S, d.s * S); }
+    for (const g of fx.glints) { const p = (t - g.t0) / g.life; if (p < 0 || p > 1) continue; star4(ctx, x + g.px * S, y + g.py * S, g.s * S * Math.sin(p * Math.PI), Math.sin(p * Math.PI) * fade); }
+  }
+
+  function drawOne(ctx, fx) {
+    THEME = fx.theme;
+    const t = fx.t, S = fx.S, F = fx.F, x = fx.x, y = fx.y;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    /* ① 균열 (주먹 뒤에 깔림) */
+    if (t >= OPEN) drawRift(ctx, fx);
+
+    /* ② 강타 이펙트 */
+    if (t >= HIT) {
+      const age = t - HIT;
+      ctx.globalCompositeOperation = 'lighter';
+      for (const [delay, k] of [[0, 1], [.05, .65]]) {
+        const q = (age - delay) / .5; if (q < 0 || q > 1) continue;
+        const r = (20 + 600 * easeOut(q)) * S * k;
+        ctx.strokeStyle = `rgba(${C(255,245,210)},${(1 - q) * .7})`; ctx.lineWidth = (20 * (1 - q) + 1) * S;
+        ctx.beginPath(); ctx.ellipse(x, y, r, r * .9, 0, 0, 7); ctx.stroke();
+      }
+      { const q = age / .3; if (q < 1) { const r = (120 + 280 * easeOut(q)) * S, al = Math.pow(1 - q, 1.6); const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${C(255,255,255)},${al * .8})`); g.addColorStop(.35, `rgba(${C(255,240,190)},${al * .45})`); g.addColorStop(1, `rgba(${C(255,200,80)},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+        ctx.fillStyle = `rgba(${C(255,255,255)},${al})`; const s = (60 + 220 * easeOutQ(q)) * S, w = s * .08 * (1 - q); ctx.beginPath();
+        for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + .4; ctx.moveTo(x + Math.cos(a + 1.57) * w, y + Math.sin(a + 1.57) * w); ctx.lineTo(x + Math.cos(a) * s, y + Math.sin(a) * s); ctx.lineTo(x - Math.cos(a + 1.57) * w, y - Math.sin(a + 1.57) * w); } ctx.fill(); } }
+      for (const r of fx.rays) {
+        const q = (t - r.t0) / r.life; if (q < 0 || q > 1) continue;
+        const L = r.L * S * easeOutQ(q / .25), w = r.w * S * (1 - q), al = Math.pow(1 - q, 1.2), ca = Math.cos(r.a), sa = Math.sin(r.a), px = -sa, py = ca, r0 = 60 * S;
+        ctx.fillStyle = `rgba(${r.col},${al * .75})`; ctx.beginPath(); ctx.moveTo(x + ca * r0 + px * w, y + sa * r0 + py * w); ctx.lineTo(x + ca * (r0 + L), y + sa * (r0 + L)); ctx.lineTo(x + ca * r0 - px * w, y + sa * r0 - py * w); ctx.closePath(); ctx.fill();
+      }
+      for (const d of fx.debris) {
+        const a2 = t - d.t0; if (a2 < 0 || a2 > d.life) continue;
+        const k = 2.6, v = d.v * S, ex = Math.exp(-k * a2), dist = v * (1 - ex) / k, px = x + Math.cos(d.a) * dist, py = y + Math.sin(d.a) * dist + 420 * S * a2 * a2;
+        const vx = Math.cos(d.a) * v * ex, vy = Math.sin(d.a) * v * ex + 840 * S * a2, al = 1 - a2 / d.life;
+        ctx.strokeStyle = `rgba(255,${210 + (al * 45 | 0)},${120 + (al * 100 | 0)},${al})`; ctx.lineWidth = d.s * S; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - vx * .03, py - vy * .03); ctx.stroke();
+      }
+      { const q = age / 1.0; if (q < 1) { const al = Math.sin(q * Math.PI) * .3, r = 320 * S, g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${C(255,215,110)},${al})`); g.addColorStop(1, `rgba(${C(255,190,60)},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); } }
+    }
+
+    /* ③ 주먹: 멀리서(작게) 다가와 화면 가득 → 강타 → 빠짐 */
+    {
+      let k = 0, alpha = 1, hot = 0, rot = fx.tilt;
+      if (t < HIT) { const p = easeIn(t / HIT); k = (.08 + .92 * p) * F; alpha = .5 + .5 * p; rot = fx.tilt + (1 - p) * 1.2; }
+      else { const age = t - HIT; const sq = age < .08 ? easeOut(age / .08) : Math.max(0, 1 - (age - .08) / .3); k = F * (1 + sq * .12); hot = sq; if (age > HOLD) { const q = clamp((age - HOLD) / .3); k = F * (1 - q * .5); alpha = 1 - q; } }
+      if (t < HIT) {
+        ctx.globalCompositeOperation = 'lighter';
+        // 접근 잔상 (동심 실루엣)
+        if (t - fx.lastGhost > .02) { fx.ghosts.push({ k, rot, t0: t }); fx.lastGhost = t; }
+        for (const g of fx.ghosts) { const a = 1 - (t - g.t0) / .12; if (a > 0) { ctx.save(); ctx.translate(x, y); ctx.rotate(g.rot); fistBody(ctx, g.k); ctx.fillStyle = `rgba(${C(255,225,140)},${a * .25})`; ctx.fill(); ctx.restore(); } }
+        // 방사 속도선 (화면 안쪽으로 빨려드는 느낌)
+        const p = t / HIT; ctx.lineWidth = 1.5 * S;
+        for (let i = 0; i < 22; i++) { const a = i / 22 * 6.283 + p * .6, r0 = (160 + 420 * (1 - p)) * S, r1 = r0 + (80 + 180 * p) * S; ctx.strokeStyle = `rgba(${C(255,245,210)},${.45 * p})`; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.stroke(); }
+        // 중심 집광
+        const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, 200 * S * p)); g.addColorStop(0, `rgba(${C(255,250,230)},${.6 * p})`); g.addColorStop(1, `rgba(${C(255,210,100)},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 200 * S, 0, 7); ctx.fill();
+      }
+      if (alpha > 0 && k > 0) drawFist(ctx, x, y, k, rot, alpha, hot);
+    }
+
+    ctx.restore();
+
+    /* 화면 연출 */
+    if (fx.screen) {
+      if (t >= HIT && t < HIT + .04) fullFill(ctx, `rgba(${C(255,250,235)},.9)`, 'lighter');
+      else if (t >= HIT + .04 && t < HIT + .3) fullFill(ctx, `rgba(${C(255,246,220)},${Math.pow(1 - (t - HIT - .04) / .26, 2) * .6})`, 'lighter');
+      const ab = (t > HIT && t < HIT + .5) ? 9 * S * (1 - (t - HIT) / .5) : 0;
+      if (ab > .3) { const cv = ctx.canvas, k = cv.clientWidth ? cv.width / cv.clientWidth : 1; ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = THEME === 'red' ? .06 : .15; ctx.drawImage(cv, -ab * k, 0); ctx.drawImage(cv, ab * k, 0); ctx.restore(); }
+    }
+  }
+
+  function draw(ctx) { for (const fx of list) drawOne(ctx, fx); }
+
+  global.LightFist = { spawn, update, draw, shake, timeScale, clear, active, DURATION: DUR, HIT_TIME: HIT };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* =========================================================
+   RedFist VFX v1 — 붉은 주먹 · 균열 강타 (필살기 후연출) (캔버스 2D, 배경 투명)
+   ---------------------------------------------------------
+   정면을 향한 거대한 빛의 주먹이 안쪽(먼 곳)에서 커지며 날아와 대상을 강타하고,
+   충격 지점의 공간에 유리처럼 금이 간다 (조각은 떨어지지 않고 금만 남았다가 사라짐).
+   시전자 모션 없음.
+   사용법
+     1) 이 파일 내용을 게임 HTML의 <script> 안에 그대로 붙여넣기
+     2) 스킬 사용 시:
+          RedFist.spawn(x, y, {               // x,y = 대상(충격 지점)
+            scale: 1,          // 크기 배율 (화면 짧은 변 700px 기준 1)
+            size: 1,           // 주먹 크기 배율 (scale 과 별도)
+            tilt: -0.2,        // 주먹 기울기(라디안)
+            screen: true,      // 화면 플래시·색수차 연출
+            onHit(fx){},       // 강타 순간 (0.22초) — 데미지/넉백
+            onEnd(fx){}        // 종료 (1.8초)
+          });
+     3) 게임 루프 매 프레임:
+          const ts = RedFist.timeScale();       // 히트스톱 0~1 (선택)
+          const [sx, sy] = RedFist.shake();     // 카메라 흔들림 (선택)
+          ctx.save(); ctx.translate(sx, sy);
+          ...게임 화면 그리기...
+          RedFist.draw(ctx);                    // ★ 게임 화면을 다 그린 뒤 (유리 굴절이 화면을 읽음)
+          ctx.restore();
+          RedFist.update(dt);
+   타이밍(초): 0.00~0.22 주먹 접근 (작은 점 → 화면 가득, 잔상·속도선)
+               0.22 강타 — 히트스톱, 충격파, 금이 바깥으로 번짐 (onHit)
+               0.22~0.5 주먹 압착 후 빠짐 / 0.5~1.3 금이 유지 (미세 어긋남·반짝임) / ~1.8 금이 옅어지며 종료
+   ========================================================= */
+(function (global) {
+  const DUR = 1.8, HIT = 0.22, HOLD = 0.22, STOP = 0.1, OPEN = 0.24, CRACK_FADE = 1.3;
+  const R = (a, b) => a + Math.random() * (b - a);
+  const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+  const easeIn = x => Math.pow(clamp(x), 2.6);
+  const easeOut = x => 1 - Math.pow(1 - clamp(x), 3);
+  const easeOutQ = x => 1 - Math.pow(1 - clamp(x), 5);
+  const list = [];
+  /* 색 테마: 'gold'(기본) | 'red'(붉은 주황). red 는 금빛 계열 색의 색상을 붉은 주황으로 회전 */
+  let THEME = 'gold';
+  const CACHE = {};
+  function C(r, g, b) {
+    if (THEME === 'gold') return r + ',' + g + ',' + b;
+    const key = r + ',' + g + ',' + b; if (CACHE[key]) return CACHE[key];
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let l = (mx + mn) / 2;
+    let h = 0, s = 0, l2;
+    if (d) { s = d / (1 - Math.abs(2 * l - 1)); h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
+    if (d < .02 && l > .9) { h = 45; s = 1; l = .94; }                                    // 순백도 살짝 물들임
+    h = (h - 27 + 360) % 360;                                                             // 금빛(≈45°) → 붉은 주황(≈18°)
+    s = Math.min(1, s * 1.2 + .3); if (l > .5) l = .5 + (l - .5) * .55;                 // 채도↑, 밝은 색은 조금 진하게
+    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+    const [R1, G1, B1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return CACHE[key] = Math.round((R1 + m) * 255) + ',' + Math.round((G1 + m) * 255) + ',' + Math.round((B1 + m) * 255);
+  }
+
+  function spawn(x, y, o = {}) {
+    const S = o.scale ?? 1, F = (o.size ?? 1) * S, tilt = o.tilt ?? -0.2;
+    /* 자연스러운 균열: 불규칙한 각도의 주 균열이 지그재그로 뻗고, 도중에 가지가 갈라짐.
+       각 마디는 등장 시각(t0)을 가지며, 몇 마디씩 몰아서 "쩌적" 하고 뻗었다가 잠깐 멈추길 반복 */
+    const segs = [];
+    const grow = (x0, y0, ang, len, w, depth, t0) => {
+      let x = x0, y = y0, a = ang, left = len, t = t0, burst = 2 + (Math.random() * 3 | 0);
+      while (left > 0) {
+        const step = Math.min(left, R(16, 34)); a += (Math.random() < .25 ? R(-.55, .55) : R(-.14, .14)) + (ang - a) * .3;   // 대체로 곧게, 가끔 날카롭게 꺾임
+        const nx = x + Math.cos(a) * step, ny = y + Math.sin(a) * step * .9;
+        segs.push({ x0: x, y0: y, x1: nx, y1: ny, t0: t, w: w * (.3 + .7 * Math.pow(left / len, 1.5)), depth });
+        x = nx; y = ny; left -= step;
+        t += .006; if (--burst <= 0) { t += R(.03, .07); burst = 2 + (Math.random() * 3 | 0); }   // 쩌-적: 몰아서 뻗고 멈춤
+        if (depth < 2 && left > 26 && Math.random() < (depth ? .1 : .22)) {
+          const side = Math.random() < .5 ? 1 : -1;
+          grow(x, y, a + side * R(.45, 1.0), left * R(.35, .7), w * .6, depth + 1, t + R(0, .03));
+        }
+      }
+    };
+    const nMain = 18 + (Math.random() * 5 | 0), baseA = R(0, 6.283);      // 짧은 균열을 많은 방향으로
+    for (let i = 0; i < nMain; i++) {
+      const ang = baseA + i / nMain * 6.283 + R(-.12, .12);
+      const r0 = R(22, 36), long = Math.random() < .25;                    // 일부만 조금 길게
+      grow(Math.cos(ang) * r0, Math.sin(ang) * r0 * .9, ang, long ? R(130, 190) : R(60, 120), long ? R(2.4, 3.2) : R(1.6, 2.6), 0, OPEN + R(0, .05));
+    }
+    // 중심 근처의 짧은 가로지르는 금 (불규칙, 몇 개만)
+    for (let i = 0; i < 6; i++) {
+      const ang = R(0, 6.283), r = R(40, 80), span = R(.3, .6), n = 3;
+      let pa = ang, px = Math.cos(pa) * r, py = Math.sin(pa) * r * .9, t = OPEN + R(.08, .2);
+      for (let k = 1; k <= n; k++) { const qa = ang + span * k / n, rr = r * R(.9, 1.12), qx = Math.cos(qa) * rr, qy = Math.sin(qa) * rr * .9; segs.push({ x0: px, y0: py, x1: qx, y1: qy, t0: t, w: 1.4, depth: 2 }); px = qx; py = qy; t += .01; }
+    }
+    // 충격 중심의 깨진 테두리 (주먹 자국)
+    const rimPts = []; for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283, r = R(24, 38); rimPts.push([Math.cos(a) * r, Math.sin(a) * r * .9]); }
+    const pick = () => segs[Math.random() * segs.length | 0];
+    const dust = []; for (let i = 0; i < 30; i++) { const g = pick(); dust.push({ px: g.x1, py: g.y1, t0: Math.max(g.t0, OPEN) + R(0, .6), life: R(.5, 1.1), vx: R(-30, 30), vy: R(-20, 40), s: R(1, 2.6) }); }
+    const glints = []; for (let i = 0; i < 18; i++) { const g = pick(); glints.push({ px: g.x1, py: g.y1, t0: g.t0 + R(0, .5), life: R(.15, .35), s: R(6, 16) }); }
+    const rays = []; for (let i = 0; i < 26; i++) rays.push({ a: R(0, 6.283), L: R(250, 1000), w: R(3, 14), t0: HIT + R(0, .02), life: R(.25, .45), col: [C(255,255,255), C(255,245,200), C(255,225,140)][i % 3] });
+    const debris = []; for (let i = 0; i < 45; i++) { const a = R(0, 6.283); debris.push({ a, v: R(300, 1200), t0: HIT + R(0, .03), life: R(.35, .8), s: R(1, 3) }); }
+    const ghosts = [];
+
+    const fx = { x, y, S, F, tilt, theme: 'red', segs, rimPts, dust, glints, rays, debris, ghosts, lastGhost: -1, t: 0, hit: false,
+      screen: o.screen !== false, onHit: o.onHit, onEnd: o.onEnd };
+    list.push(fx);
+    return fx;
+  }
+
+  function update(dt) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i]; fx.t += dt;
+      if (!fx.hit && fx.t >= HIT) { fx.hit = true; fx.onHit && fx.onHit(fx); }
+      if (fx.t > DUR) { list.splice(i, 1); fx.onEnd && fx.onEnd(fx); }
+    }
+  }
+  function timeScale() { let s = 1; for (const fx of list) { const t = fx.t; if (t >= HIT && t < HIT + STOP) s = 0; } return s; }
+  function shake() {
+    let amp = 0;
+    for (const fx of list) {
+      const t = fx.t;
+      if (t > HIT) amp = Math.max(amp, Math.max(0, 1 - (t - HIT) / .45) * 26 * fx.S);
+    }
+    return [(Math.random() - .5) * amp, (Math.random() - .5) * amp];
+  }
+  function clear() { list.length = 0; }
+  function active() { return list.length; }
+
+  function fullFill(ctx, style, op) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = op; ctx.fillStyle = style;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
+  }
+  
+  /* ---------- 정면 주먹 ---------- */
+  /* 로컬 단위: 주먹 폭 약 150, 높이 약 140. 위쪽에 마디 4개, 아래로 접힌 손가락, 오른쪽 아래를 감싼 엄지 */
+  /* 참고 이미지에서 추출한 주먹 윤곽 (중심 기준, 폭 170 단위). OUT = 바깥 실루엣, IN = 손가락 홈·엄지 주름 */
+  const OUT = [-76.0,-41.0,-83.0,-26.3,-86.1,-17.0,-86.1,-11.6,-82.2,-4.7,-79.1,10.0,-73.7,25.5,-69.8,33.2,-62.9,39.4,-47.4,40.9,-42.0,38.6,-36.6,43.3,-32.7,49.4,-27.3,51.8,-20.4,51.8,-13.4,50.2,-6.5,43.3,-1.8,47.1,-1.8,49.4,-7.2,54.1,-9.6,54.8,-7.2,59.5,3.6,62.6,12.1,61.8,14.4,63.3,21.3,64.9,34.5,71.8,39.9,71.8,46.8,69.5,49.9,65.7,51.5,64.9,53.0,65.7,60.8,59.5,78.5,40.9,82.4,34.0,83.2,27.0,82.4,23.2,80.1,20.1,70.8,39.4,66.2,43.3,62.3,40.2,70.0,13.9,71.6,-5.4,70.0,-9.3,66.9,-27.1,62.3,-30.9,61.5,-46.4,60.0,-52.6,53.8,-56.4,47.6,-58.0,26.8,-57.2,-5.7,-63.4,-19.6,-62.6,-28.1,-60.3,-45.9,-49.5,-69.8,-44.8];
+  const IN = [[-15.0,-7.0,-15.7,-5.4,-13.4,-1.6,-12.7,18.5,-11.9,19.3,-11.9,22.4,-11.1,23.2,-11.1,28.6,-10.3,29.3,-10.3,33.2,-9.6,34.0,-8.8,44.8,-6.5,43.3,-4.9,44.0,-4.9,43.3,-5.7,42.5,-5.7,38.6,-7.2,34.8,-7.2,30.1,-8.0,29.3,-8.0,24.7,-8.8,23.9,-8.8,19.3,-9.6,18.5,-9.6,11.6,-10.3,10.8,-10.3,2.3,-11.1,1.5,-11.1,-2.3],[-49.0,-15.5,-49.7,-13.9,-49.0,-9.3,-49.7,-8.5,-51.3,-8.5,-50.5,-5.4,-52.1,-4.7,-52.8,-3.1,-48.2,3.8,-47.4,13.9,-46.7,14.7,-45.9,30.9,-44.3,34.8,-44.3,37.8,-43.6,39.4,-42.0,38.6,-40.5,39.4,-40.5,37.8,-42.8,32.4,-43.6,24.7,-44.3,23.9,-45.1,10.8,-45.9,10.0,-45.9,-3.1,-46.7,-3.9,-47.4,-15.5],[27.5,-20.9,26.8,-20.1,27.5,-18.6,27.5,-12.4,28.3,-11.6,28.3,-6.2,29.1,-5.4,29.1,-1.6,29.8,-0.8,29.8,28.6,29.1,29.3,29.1,42.5,28.3,43.3,28.3,45.6,24.4,49.4,16.7,52.5,7.4,52.5,6.7,51.8,2.0,51.0,-1.8,48.7,-3.4,51.0,2.0,54.1,9.0,54.8,10.5,57.2,10.5,60.3,11.3,61.0,10.5,61.8,13.6,62.6,12.8,57.2,12.1,56.4,12.8,54.8,16.7,54.8,17.5,54.1,19.8,54.1,20.6,53.3,24.4,52.5,28.3,50.2,31.4,47.1,33.7,47.1,34.5,47.9,40.7,47.9,41.4,48.7,43.0,48.7,47.6,54.1,47.6,55.6,49.2,58.7,49.2,66.4,52.3,64.9,52.3,62.6,51.5,61.8,50.7,55.6,47.6,50.2,49.2,48.7,53.8,48.7,54.6,47.9,58.4,47.1,65.4,42.5,62.3,40.2,53.0,46.3,36.0,46.3,31.4,43.3,32.2,-2.3,30.6,-6.2,30.6,-9.3,33.7,-14.7,32.2,-15.5,30.6,-13.2,29.8,-13.9,29.8,-20.1],[63.8,-29.4,63.8,-18.6,64.6,-23.2,65.4,-24.0,65.4,-28.6]];
+  function poly(ctx, A, k) { ctx.moveTo(A[0] * k, A[1] * k); for (let i = 2; i < A.length; i += 2) ctx.lineTo(A[i] * k, A[i + 1] * k); ctx.closePath(); }
+  function fistBody(ctx, k) { ctx.beginPath(); poly(ctx, OUT, k); }
+  function fistDetail(ctx, k, alpha) {
+    ctx.fillStyle = `rgba(${C(205,112,18)},${alpha})`;
+    ctx.beginPath(); for (const A of IN) poly(ctx, A, k); ctx.fill();
+  }
+  function drawFist(ctx, x, y, k, rot, alpha, hot) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [lw, al] of [[44, .05], [22, .1], [9, .18]]) { fistBody(ctx, k); ctx.strokeStyle = `rgba(${C(255,210,100)},${al * alpha})`; ctx.lineWidth = lw * k; ctx.lineJoin = 'round'; ctx.stroke(); }
+    ctx.globalCompositeOperation = 'source-over';
+    fistBody(ctx, k);
+    const g = ctx.createRadialGradient(-10 * k, -10 * k, 0, 0, 0, 95 * k);        // 중심 흰색 → 가장자리 금빛 (참고 이미지의 평면적인 흰 주먹)
+    if (THEME === 'red') { g.addColorStop(0, `rgba(255,214,170,${alpha})`); g.addColorStop(.5, `rgba(255,128,62,${alpha})`); g.addColorStop(1, `rgba(214,48,20,${alpha})`); }
+    else { g.addColorStop(0, `rgba(255,255,255,${alpha})`); g.addColorStop(.7, `rgba(255,250,228,${alpha})`); g.addColorStop(1, `rgba(255,222,140,${alpha})`); }
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = `rgba(${C(226,140,30)},${alpha})`; ctx.lineWidth = 3.5 * k; ctx.lineJoin = 'round'; ctx.stroke();
+    fistDetail(ctx, k, alpha);
+    if (hot > 0 && THEME !== 'red') { ctx.globalCompositeOperation = 'lighter'; fistBody(ctx, k); ctx.fillStyle = `rgba(${C(255,255,255)},${.25 * hot * alpha})`; ctx.fill(); }
+    ctx.restore();
+  }
+
+  /* ---------- 균열 (금만, 조각은 떨어지지 않음) ---------- */
+  function star4(ctx, x, y, s, al) {
+    ctx.fillStyle = `rgba(${C(255,250,230)},${al})`; ctx.beginPath();
+    ctx.moveTo(x, y - s); ctx.lineTo(x + s * .12, y - s * .12); ctx.lineTo(x + s, y); ctx.lineTo(x + s * .12, y + s * .12);
+    ctx.lineTo(x, y + s); ctx.lineTo(x - s * .12, y + s * .12); ctx.lineTo(x - s, y); ctx.lineTo(x - s * .12, y - s * .12); ctx.closePath(); ctx.fill();
+  }
+  function drawRift(ctx, fx) {
+    const t = fx.t, S = fx.S, x = fx.x, y = fx.y;
+    const fade = t < CRACK_FADE ? 1 : clamp(1 - (t - CRACK_FADE) / (DUR - CRACK_FADE));
+    if (fade <= 0) return;
+    const prog = clamp((t - OPEN) / .25);
+
+    // 보이는 마디를 두께 단계별로 모아 한 번에 그림 (성능)
+    const B = [[], [], [], []];
+    for (const g of fx.segs) {
+      if (t < g.t0) continue;
+      const f = clamp((t - g.t0) / .006);                           // 마디가 뻗는 순간
+      const bi = g.w > 3 ? 3 : g.w > 2 ? 2 : g.w > 1.2 ? 1 : 0;
+      B[bi].push(g, f);
+    }
+    const W = [1.1, 1.8, 2.6, 3.4];
+    const pass = (mult, rgb, al, op) => {
+      ctx.globalCompositeOperation = op;
+      for (let bi = 0; bi < 4; bi++) {
+        const arr = B[bi]; if (!arr.length) continue;
+        ctx.strokeStyle = `rgba(${rgb},${al * fade})`; ctx.lineWidth = W[bi] * mult * S; ctx.beginPath();
+        for (let i = 0; i < arr.length; i += 2) { const g = arr[i], f = arr[i + 1]; ctx.moveTo(x + g.x0 * S, y + g.y0 * S); ctx.lineTo(x + (g.x0 + (g.x1 - g.x0) * f) * S, y + (g.y0 + (g.y1 - g.y0) * f) * S); }
+        ctx.stroke();
+      }
+    };
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    pass(2.2, C(20,12,0), .55, 'source-over');                          // 그림자 (깊이)
+    pass(3.2, C(255,200,90), .16, 'lighter');                           // 금빛 번짐
+    pass(1.0, C(255,236,190), .95, 'lighter');                          // 본선
+    pass(.38, C(255,255,255), 1, 'lighter');                            // 흰 심
+
+    // 충격 중심: 밝은 자국 + 깨진 테두리
+    { const r = 40 * S * easeOutQ(prog);
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, r * 1.6));
+      g.addColorStop(0, `rgba(${C(255,250,235)},${.55 * fade})`); g.addColorStop(.6, `rgba(${C(255,235,180)},${.22 * fade})`); g.addColorStop(1, `rgba(${C(255,220,140)},0)`);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, 7); ctx.fill();
+      const k = easeOutQ(prog); ctx.strokeStyle = `rgba(${C(255,248,225)},${.85 * fade * k})`; ctx.lineWidth = 1.3 * S; ctx.beginPath();
+      fx.rimPts.forEach((p, i) => { const px = x + p[0] * S * k, py = y + p[1] * S * k; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+      ctx.closePath(); ctx.stroke(); }
+
+    // 가루 / 반짝임
+    ctx.globalCompositeOperation = 'lighter';
+    for (const d of fx.dust) { const age = t - d.t0; if (age < 0 || age > d.life) continue; ctx.fillStyle = `rgba(${C(255,250,230)},${(1 - age / d.life) * fade})`; ctx.fillRect(x + (d.px + d.vx * age) * S, y + (d.py + d.vy * age + 260 * age * age) * S, d.s * S, d.s * S); }
+    for (const g of fx.glints) { const p = (t - g.t0) / g.life; if (p < 0 || p > 1) continue; star4(ctx, x + g.px * S, y + g.py * S, g.s * S * Math.sin(p * Math.PI), Math.sin(p * Math.PI) * fade); }
+  }
+
+  function drawOne(ctx, fx) {
+    THEME = fx.theme;
+    const t = fx.t, S = fx.S, F = fx.F, x = fx.x, y = fx.y;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    /* ① 균열 (주먹 뒤에 깔림) */
+    if (t >= OPEN) drawRift(ctx, fx);
+
+    /* ② 강타 이펙트 */
+    if (t >= HIT) {
+      const age = t - HIT;
+      ctx.globalCompositeOperation = 'lighter';
+      for (const [delay, k] of [[0, 1], [.05, .65]]) {
+        const q = (age - delay) / .5; if (q < 0 || q > 1) continue;
+        const r = (20 + 600 * easeOut(q)) * S * k;
+        ctx.strokeStyle = `rgba(${C(255,245,210)},${(1 - q) * .7})`; ctx.lineWidth = (20 * (1 - q) + 1) * S;
+        ctx.beginPath(); ctx.ellipse(x, y, r, r * .9, 0, 0, 7); ctx.stroke();
+      }
+      { const q = age / .3; if (q < 1) { const r = (120 + 280 * easeOut(q)) * S, al = Math.pow(1 - q, 1.6); const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${C(255,255,255)},${al * .8})`); g.addColorStop(.35, `rgba(${C(255,240,190)},${al * .45})`); g.addColorStop(1, `rgba(${C(255,200,80)},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+        ctx.fillStyle = `rgba(${C(255,255,255)},${al})`; const s = (60 + 220 * easeOutQ(q)) * S, w = s * .08 * (1 - q); ctx.beginPath();
+        for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + .4; ctx.moveTo(x + Math.cos(a + 1.57) * w, y + Math.sin(a + 1.57) * w); ctx.lineTo(x + Math.cos(a) * s, y + Math.sin(a) * s); ctx.lineTo(x - Math.cos(a + 1.57) * w, y - Math.sin(a + 1.57) * w); } ctx.fill(); } }
+      for (const r of fx.rays) {
+        const q = (t - r.t0) / r.life; if (q < 0 || q > 1) continue;
+        const L = r.L * S * easeOutQ(q / .25), w = r.w * S * (1 - q), al = Math.pow(1 - q, 1.2), ca = Math.cos(r.a), sa = Math.sin(r.a), px = -sa, py = ca, r0 = 60 * S;
+        ctx.fillStyle = `rgba(${r.col},${al * .75})`; ctx.beginPath(); ctx.moveTo(x + ca * r0 + px * w, y + sa * r0 + py * w); ctx.lineTo(x + ca * (r0 + L), y + sa * (r0 + L)); ctx.lineTo(x + ca * r0 - px * w, y + sa * r0 - py * w); ctx.closePath(); ctx.fill();
+      }
+      for (const d of fx.debris) {
+        const a2 = t - d.t0; if (a2 < 0 || a2 > d.life) continue;
+        const k = 2.6, v = d.v * S, ex = Math.exp(-k * a2), dist = v * (1 - ex) / k, px = x + Math.cos(d.a) * dist, py = y + Math.sin(d.a) * dist + 420 * S * a2 * a2;
+        const vx = Math.cos(d.a) * v * ex, vy = Math.sin(d.a) * v * ex + 840 * S * a2, al = 1 - a2 / d.life;
+        ctx.strokeStyle = `rgba(255,${210 + (al * 45 | 0)},${120 + (al * 100 | 0)},${al})`; ctx.lineWidth = d.s * S; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - vx * .03, py - vy * .03); ctx.stroke();
+      }
+      { const q = age / 1.0; if (q < 1) { const al = Math.sin(q * Math.PI) * .3, r = 320 * S, g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${C(255,215,110)},${al})`); g.addColorStop(1, `rgba(${C(255,190,60)},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); } }
+    }
+
+    /* ③ 주먹: 멀리서(작게) 다가와 화면 가득 → 강타 → 빠짐 */
+    {
+      let k = 0, alpha = 1, hot = 0, rot = fx.tilt;
+      if (t < HIT) { const p = easeIn(t / HIT); k = (.08 + .92 * p) * F; alpha = .5 + .5 * p; rot = fx.tilt + (1 - p) * 1.2; }
+      else { const age = t - HIT; const sq = age < .08 ? easeOut(age / .08) : Math.max(0, 1 - (age - .08) / .3); k = F * (1 + sq * .12); hot = sq; if (age > HOLD) { const q = clamp((age - HOLD) / .3); k = F * (1 - q * .5); alpha = 1 - q; } }
+      if (t < HIT) {
+        ctx.globalCompositeOperation = 'lighter';
+        // 접근 잔상 (동심 실루엣)
+        if (t - fx.lastGhost > .02) { fx.ghosts.push({ k, rot, t0: t }); fx.lastGhost = t; }
+        for (const g of fx.ghosts) { const a = 1 - (t - g.t0) / .12; if (a > 0) { ctx.save(); ctx.translate(x, y); ctx.rotate(g.rot); fistBody(ctx, g.k); ctx.fillStyle = `rgba(${C(255,225,140)},${a * .25})`; ctx.fill(); ctx.restore(); } }
+        // 방사 속도선 (화면 안쪽으로 빨려드는 느낌)
+        const p = t / HIT; ctx.lineWidth = 1.5 * S;
+        for (let i = 0; i < 22; i++) { const a = i / 22 * 6.283 + p * .6, r0 = (160 + 420 * (1 - p)) * S, r1 = r0 + (80 + 180 * p) * S; ctx.strokeStyle = `rgba(${C(255,245,210)},${.45 * p})`; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.stroke(); }
+        // 중심 집광
+        const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(1, 200 * S * p)); g.addColorStop(0, `rgba(${C(255,250,230)},${.6 * p})`); g.addColorStop(1, `rgba(${C(255,210,100)},0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 200 * S, 0, 7); ctx.fill();
+      }
+      if (alpha > 0 && k > 0) drawFist(ctx, x, y, k, rot, alpha, hot);
+    }
+
+    ctx.restore();
+
+    /* 화면 연출 */
+    if (fx.screen) {
+      if (t >= HIT && t < HIT + .04) fullFill(ctx, `rgba(${C(255,250,235)},.9)`, 'lighter');
+      else if (t >= HIT + .04 && t < HIT + .3) fullFill(ctx, `rgba(${C(255,246,220)},${Math.pow(1 - (t - HIT - .04) / .26, 2) * .6})`, 'lighter');
+      const ab = (t > HIT && t < HIT + .5) ? 9 * S * (1 - (t - HIT) / .5) : 0;
+      if (ab > .3) { const cv = ctx.canvas, k = cv.clientWidth ? cv.width / cv.clientWidth : 1; ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = THEME === 'red' ? .06 : .15; ctx.drawImage(cv, -ab * k, 0); ctx.drawImage(cv, ab * k, 0); ctx.restore(); }
+    }
+  }
+
+  function draw(ctx) { for (const fx of list) drawOne(ctx, fx); }
+
+  global.RedFist = { spawn, update, draw, shake, timeScale, clear, active, DURATION: DUR, HIT_TIME: HIT };
+})(typeof window !== 'undefined' ? window : globalThis);
+
 
 </script>
 <script>
@@ -6036,15 +6597,20 @@ const YURIA_BASE={name:'쿠죠 유리아',els:['fire','dark'],lv:30,hp:400,atk:1
 const ONE_BASE={name:'온리 원',els:['dark','water'],lv:30,hp:420,atk:92,def:84,spd:96,crit:5,cdmg:150,moves:[
   {name:'다크매터',el:'dark',els:['dark','water'],pow:70,acc:100,pp:20,fx:'darkburst',gim:'shield',gt:'아군 전체 실드',desc:'암흑물질을 압축해 폭발시킨다 · 어둠·물 혼합 · 아군 전체에게 다음 피격 50% 감경 실드'}],
   ult:{name:'다크매터 폭발',el:'dark',els:['dark','water'],pow:150,acc:100,gim:'def-',gt:'어둠·물 혼합 · 적 방어 -2'},domain:{name:'여왕의 다크매터',turns:3,fx:'heal',fxName:'여왕의 가호',fxDesc:'3턴 동안 매 턴 아군 회복 · 영역이 닫힐 때 아군이 준 피해의 10%를 적에게 되돌린다'}};
-const DOM_FX={inf:{n:'특수 스킬 무한 사용'},ultfin:{n:'궁극기 마무리'},buff:{n:'아군 강화'},heal:{n:'아군 회복·실드'}};
+const LILY_BASE={name:'릴리바이스',els:['light'],lv:30,hp:405,atk:106,def:74,spd:113,crit:8,cdmg:160,moves:[
+  {name:'빛의 주먹',el:'light',pow:60,acc:100,pp:20,fx:'lightfist',gim:'fist',gt:'필살기 사용 횟수만큼 시전 횟수 증가',desc:'빛을 응축한 거대한 주먹을 날린다 · 기본 1회 · 오버클럭을 사용할 때마다 시전 횟수 +1'}],
+  ult:{name:'오버클럭',el:'light',pow:170,acc:100,gim:'overclock',gt:'빛의 주먹 시전 +1'},domain:{name:'마지막 생명',turns:0,fx:'fist',fxName:'빛의 주먹 연타',fxDesc:'빛의 주먹을 5연속 시전한다 (오버클럭 사용 횟수만큼 증가)'}};
+const DOM_FX={inf:{n:'특수 스킬 무한 사용'},fist:{n:'빛의 주먹 연타'},ultfin:{n:'궁극기 마무리'},buff:{n:'아군 강화'},heal:{n:'아군 회복·실드'}};
 const HEROES={
   rod:{id:'rod',name:'로스바이세',en:'Rossweisse',sig:'黒月の剣客',base:HERO_BASE,els:HERO_BASE.els,img:'img/char_hd.webp',face:'img/face.webp',back:'img/back.webp',back2:'img/back2.webp',cutin:'img/cutin.webp',nodeArt:'img/node_art.webp',vid:'ult.mp4',
     domainTint:'moon',cutinOpt:{},awakeMsg:'흑월 각성 — 로스바이세의 모습이 변했다',domMsg:'검은 손들이 전장을 감쌌다.'},
   yuria:{id:'yuria',name:'쿠죠 유리아',en:'Kujo Yuria',sig:'紅蓮の剣鬼',base:YURIA_BASE,els:YURIA_BASE.els,img:'img/yuria_char.webp',face:'img/yuria_face.webp',back:'img/yuria_back.webp',back2:null,cutin:'img/yuria_cutin.webp',nodeArt:'img/yuria_face.webp',vid:'yuria_ult.mp4',
     domainTint:'blood',cutinOpt:{kanji:'',eng:'',kor:'혈야의 영지',cls:'yuria'},domMsg:'핏빛 안개가 전장을 뒤덮었다.'},
   one:{id:'one',name:'온리 원',en:'Only One',sig:'黒物質の女王',base:ONE_BASE,els:ONE_BASE.els,img:'img/one_char.webp',face:'img/one_face.webp',back:'img/one_char.webp',back2:null,cutin:'img/one_cutin.webp',nodeArt:'img/one_key.webp',vid:'one_ult.mp4',
-    domainTint:'mono',cutinOpt:{kanji:'',eng:'',kor:'여왕의 다크매터',cls:'one'},domMsg:'세상의 색이 빠져나갔다.'}};
-const heroEmblem=id=>dualEmblem(HEROES[id].els[0],HEROES[id].els[1]);
+    domainTint:'mono',cutinOpt:{kanji:'',eng:'',kor:'여왕의 다크매터',cls:'one'},domMsg:'세상의 색이 빠져나갔다.'},
+  lily:{id:'lily',name:'릴리바이스',en:'Lilyweiss',sig:'白花の拳聖',base:LILY_BASE,els:LILY_BASE.els,img:'img/lily_char.webp',face:'img/lily_face.webp',back:'img/lily_char.webp',back2:null,cutin:'img/lily_cutin.webp',nodeArt:'img/lily_key.webp',vid:'lily_ult.mp4',
+    domainTint:'light',cutinOpt:{kanji:'',eng:'',kor:'마지막 생명',cls:'lily'},domMsg:'하얀 꽃잎이 전장을 뒤덮었다.'}};
+const heroEmblem=id=>emblemOf(HEROES[id]);
 const DUAL_FD=dualEmblem('fire','dark');
 const SK_SFX={flashPoint:'stab',crimsonBandCombo:'combo5',horizontalSweep:'sweep2',crescentMoon:'crescent2',bloodBrush:'ult_blood'};
 const FOE_MOVES={
@@ -6137,7 +6703,7 @@ function openChar(){
 const ROSTER=[
   {id:'rod',name:'로스바이세',lv:1,r:5,els:['light','dark'],img:'img/char_hd.webp',owned:true,asc:0},
   {id:'yuria',name:'쿠죠 유리아',lv:1,r:5,els:['fire','dark'],img:'img/yuria_char.webp',owned:false,asc:0},{id:'one',name:'온리 원',lv:1,r:5,els:['dark','water'],img:'img/one_char.webp',owned:false,asc:0},
-  {id:'u3',name:'???',lv:1,r:4,els:['grass'],owned:false},{id:'u4',name:'???',lv:1,r:5,els:['light'],owned:false},{id:'u5',name:'???',lv:1,r:4,els:['dark'],owned:false}];
+  {id:'u3',name:'???',lv:1,r:4,els:['grass'],owned:false},{id:'lily',name:'릴리바이스',lv:1,r:5,els:['light'],img:'img/lily_char.webp',owned:false,asc:0},{id:'u5',name:'???',lv:1,r:4,els:['dark'],owned:false}];
 const SIL='<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7Z"/></svg>';
 function ccard(ch){const n=ch.r>=5?5:4,asc=ch.asc||0,st=Array.from({length:n},(_,i)=>`<i class="${i<asc?'on':''}"></i>`).join(''),gold=ch.r<5;
   return `<button class="ccard ${ch.owned?'':'locked'} ${rcls(ch.r)}" data-id="${ch.id}" ${ch.owned?'':'tabindex="-1"'}>
@@ -6156,6 +6722,7 @@ function closeChars(){show('lobby')}
 
 /* ── 캐릭터 상세 ── */
 const SKI={
+  fist:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M7 11V7a1.5 1.5 0 0 1 3 0v3m0-4V5a1.5 1.5 0 0 1 3 0v5m0-4a1.5 1.5 0 0 1 3 0v6m0-3a1.5 1.5 0 0 1 3 0v4c0 4-2.5 6-6 6H9c-2 0-3-1-4-3l-2-4a1.5 1.5 0 0 1 2.6-1.5L7 12"/></svg>',
   pas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3c3 3 6 5 6 9a6 6 0 0 1-12 0c0-4 3-6 6-9Z"/><path d="M12 21v-6"/></svg>',
   flash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v6M12 16v6M2 12h6M16 12h6"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>',
   band:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 20 21 4M3 12 11 4M13 20l8-8"/></svg>',
@@ -6173,6 +6740,11 @@ const ONE_SKILLS=[
   {n:'다크매터',i:'dark',lv:1,d:'어둠·물 혼합 · 위력 70 · 암흑물질을 압축했다가 폭발시킨다. 명중 시 아군 전체에게 실드(다음 피격 피해 50% 감경).'},
   {n:'다크매터 폭발',i:'ult',lv:1,ult:true,d:'궁극기 · 어둠·물 혼합 속성 · 위력 150 · 두 속성 중 유리한 쪽으로 판정. 적의 방어 -2 (지속).'},
   {n:'여왕의 다크매터',i:'pas',lv:1,ult:true,d:'영역 전개 고유 효과 · 세상의 색이 사라진다. 3턴 동안 매 턴 아군 전체 HP 8% 회복 · 영역 동안 아군이 준 피해의 10%를 모아 영역이 닫힐 때 적에게 암흑 폭풍으로 되돌린다.'}];
+const LILY_SKILLS=[
+  {n:'백화의 성역',i:'pas',lv:1,pas:true,d:'기본 스킬(패시브) · 오버클럭을 사용할 때마다 빛의 주먹 시전 횟수가 영구히(전투 내) +1. 빛의 주먹은 시전 1회마다 별도로 피해를 준다.'},
+  {n:'빛의 주먹',i:'fist',lv:1,d:'빛 · 위력 60 · 거대한 빛의 주먹이 먼 곳에서 날아와 적을 강타하고 공간에 금을 낸다. 기본 1회 시전 · 오버클럭 사용 횟수만큼 시전 횟수 증가.'},
+  {n:'오버클럭',i:'ult',lv:1,ult:true,d:'궁극기 · 빛 · 위력 170 · 가장 강한 출력으로 붉게 달아오른 주먹을 내리꽂는다. 사용 후 빛의 주먹 시전 횟수 +1 (사용할 때마다 누적).'},
+  {n:'마지막 생명',i:'pas',lv:1,ult:true,d:'영역 전개 고유 효과 · 하얀 꽃의 성역이 열리며 빛의 주먹을 5연속 시전한다 (오버클럭 사용 횟수만큼 증가). 다른 영역이 열려 있으면 함께 공명한다.'}];
 const YURIA_SKILLS=[
   {n:'홍련의 피',i:'pas',lv:1,pas:true,d:'기본 스킬(패시브) · HP 50% 이하일 때 치명타 확률 +15%. 출혈 상태의 적에게 주는 피해 +15%.'},
   {n:'섬광점',i:'flash',lv:1,d:'불 · 위력 70 · 적의 급소를 꿰뚫어 방어 -1.'},
@@ -6193,15 +6765,16 @@ function openDetail(id){
   if(id&&HEROES[id])CUR=id;const H=HEROES[CUR],P=chP(CUR);
   flashW();show('detail');$('detail').classList.remove('arti','nodetab');$('detail').dataset.ch=CUR;
   $('dArt').src=H.img;$('nArt').src=H.nodeArt;$('dSig').textContent=H.sig;$('dNameK').textContent=H.name;$('dNameE').textContent=H.en;$('dName').innerHTML=`${H.name} <span class="rolei" title="브레이커">✸</span>`;
-  const b=bonus(CUR),asc=P.nodes||0,SKL=CUR==='rod'?HERO_SKILLS:CUR==='one'?ONE_SKILLS:YURIA_SKILLS;
+  const b=bonus(CUR),asc=P.nodes||0,SKL=SKILLS_BY[CUR]||HERO_SKILLS;
   $('dLv').textContent='Lv.'+P.lv;$('dEls').innerHTML=heroEmblem(CUR);$('dAsc').innerHTML=Array.from({length:5},(_,i)=>`<i class="${i<asc?'on':''}"></i>`).join('');
   const row=(k,v,bn)=>`<tr><td>${k}</td><td>${v+bn}${bn?`<em>+${bn}</em>`:''}</td></tr>`;const hs=heroStats(P.lv,CUR);
   $('dStat').innerHTML=row('체력',hs.hp,b.hp)+row('공격력',hs.atk,b.atk)+row('방어력',hs.def,b.def)+row('스피드',hs.spd,b.spd)+`<tr><td>치명타 확률</td><td>${hs.crit+b.crit}%${b.crit?`<em>+${b.crit}%</em>`:''}</td></tr><tr><td>치명타 피해</td><td>${hs.cdmg+b.cdmg}%${b.cdmg?`<em>+${b.cdmg}%</em>`:''}</td></tr>`;
   $('dSkills').innerHTML=SKL.map((s,i)=>`<button class="sk${s.ult?' ult':''}${s.pas?' pas':''}" data-i="${i}" aria-label="${s.n}"><span class="ico">${SKI[s.i]}</span><span class="sl">${s.pas?'기본':'Lv.'+s.lv}</span></button>`).join('');
   $('dSkDesc').innerHTML='스킬 아이콘을 누르면 설명이 표시됩니다.';
-  $('dSkills').querySelectorAll('.sk').forEach(bt=>bt.onclick=()=>{$('dSkills').querySelectorAll('.sk').forEach(x=>x.classList.remove('on'));bt.classList.add('on');const s=(CUR==='rod'?HERO_SKILLS:CUR==='one'?ONE_SKILLS:YURIA_SKILLS)[+bt.dataset.i];$('dSkDesc').innerHTML=`<b>${s.n}</b> — ${s.d}`});
+  $('dSkills').querySelectorAll('.sk').forEach(bt=>bt.onclick=()=>{$('dSkills').querySelectorAll('.sk').forEach(x=>x.classList.remove('on'));bt.classList.add('on');const s=(SKILLS_BY[CUR]||HERO_SKILLS)[+bt.dataset.i];$('dSkDesc').innerHTML=`<b>${s.n}</b> — ${s.d}`});
   $('dTabs').querySelectorAll('.dtab').forEach(t=>t.classList.toggle('on',t.dataset.tab==='basic'));
 }
+const SKILLS_BY={rod:HERO_SKILLS,yuria:YURIA_SKILLS,one:ONE_SKILLS,lily:LILY_SKILLS};
 function closeDetail(){show('chars');renderChars()}
 $('dtBack').onclick=closeDetail;
 
@@ -6255,15 +6828,19 @@ const SIG_REGION_O={id:'sigo',name:'온리 원 전용',el:'dark'};
 const SIG_ITEM_O={id:'x3',n:'흑익의 여왕 · 黒翼の女王',slot:'armor',st:{def:22,hp:40,atk:12},r:5,sig:true,art:'img/one_sig.webp',key:'img/one_sigkey.webp',
   d:'무너진 도시 위, 검은 날개를 펼친 온리 원의 모습이 깃든 드레스. 색을 잃은 세계에서도 여왕의 자리는 변하지 않는다. 소환으로만 손에 넣을 수 있다.',
   pas:'전용 효과 · 온리 원 장착 시 다크매터 실드 지속 +1회, 어둠·물 기술 위력 +10%'};
+const SIG_REGION_L={id:'sigl',name:'릴리바이스 전용',el:'light'};
+const SIG_ITEM_L={id:'x4',n:'철혈의 전장 · 鉄血の戦場',slot:'weapon',st:{atk:28,spd:8,crit:6},r:5,sig:true,art:'img/lily_sig.webp',key:'img/lily_sig.webp',
+  d:'불타는 기계 병기들 사이에서 보랏빛 망토를 휘날리며 맨주먹으로 맞선 릴리바이스. 그날의 전장에서 가져온 장갑이 그녀의 주먹을 감싼다. 소환으로만 손에 넣을 수 있다.',
+  pas:'전용 효과 · 릴리바이스 장착 시 빛의 주먹 기본 시전 횟수 +1, 빛 기술 위력 +10%'};
 const SIG_ITEM_Y={id:'x2',n:'홍련야행 · 紅蓮夜行',slot:'acc',st:{atk:24,spd:10,cdmg:20},r:5,sig:true,art:'img/ysig.webp',key:'img/ysigkey.webp',
   d:'달밤의 신사 돌계단, 단풍 위에 앉아 음악을 듣던 유리아의 주홍 헤드폰과 홍련의 외투. 영지를 펼치기 전 그녀가 반드시 거치는 의식. 소환으로만 손에 넣을 수 있다.',
   pas:'전용 효과 · 쿠죠 유리아 장착 시 영역 게이지 충전량 +50%, 불·어둠 기술 위력 +10%'};
 const ART_SRC={f1:'img/art_f1.webp',f2:'img/art_f2.webp',f3:'img/art_f3.webp',w1:'img/art_w1.webp',w2:'img/art_w2.webp',w3:'img/art_w3.webp',g1:'img/art_g1.webp',g2:'img/art_g2.webp',g3:'img/art_g3.webp',l1:'img/art_l1.webp',l2:'img/art_l2.webp',l3:'img/art_l3.webp',d1:'img/art_d1.webp',d2:'img/art_d2.webp',d3:'img/art_d3.webp',s1:'img/art_s1.webp',s2:'img/art_s2.webp',s3:'img/art_s3.webp'};
-const ITEM_BY=Object.fromEntries([...REGIONS.flatMap(r=>r.items.map(i=>[i.id,{...i,region:r,art:ART_SRC[i.id]}])),['x1',{...SIG_ITEM,region:SIG_REGION}],['x2',{...SIG_ITEM_Y,region:SIG_REGION_Y}],['x3',{...SIG_ITEM_O,region:SIG_REGION_O}]]);
-const hasSig=()=>INV.ceq.rod==='x1';const hasSigY=()=>INV.ceq.yuria==='x2';const hasSigO=()=>INV.ceq.one==='x3';
-let INV={owned:[],ceq:{rod:null,yuria:null,one:null},teq:[null,null,null],cleared:[]};
+const ITEM_BY=Object.fromEntries([...REGIONS.flatMap(r=>r.items.map(i=>[i.id,{...i,region:r,art:ART_SRC[i.id]}])),['x1',{...SIG_ITEM,region:SIG_REGION}],['x2',{...SIG_ITEM_Y,region:SIG_REGION_Y}],['x3',{...SIG_ITEM_O,region:SIG_REGION_O}],['x4',{...SIG_ITEM_L,region:SIG_REGION_L}]]);
+const hasSig=()=>INV.ceq.rod==='x1';const hasSigY=()=>INV.ceq.yuria==='x2';const hasSigO=()=>INV.ceq.one==='x3';const hasSigL=()=>INV.ceq.lily==='x4';
+let INV={owned:[],ceq:{rod:null,yuria:null,one:null,lily:null},teq:[null,null,null],cleared:[]};
 try{const s=JSON.parse(localStorage.getItem('hm_inv')||'null');if(s&&s.owned)INV={...INV,...s}}catch(e){}
-if(!INV.ceq)INV.ceq={rod:null};if(INV.ceq.yuria===undefined)INV.ceq.yuria=null;if(INV.ceq.one===undefined)INV.ceq.one=null;if(!INV.teq)INV.teq=[null,null,null];
+if(!INV.ceq)INV.ceq={rod:null};if(INV.ceq.yuria===undefined)INV.ceq.yuria=null;if(INV.ceq.one===undefined)INV.ceq.one=null;if(INV.ceq.lily===undefined)INV.ceq.lily=null;if(!INV.teq)INV.teq=[null,null,null];
 if(INV.eq){const old=Object.values(INV.eq).filter(Boolean);if(!INV.ceq.rod&&old.length)INV.ceq.rod=old.shift();old.slice(0,3).forEach((id,i)=>{if(!INV.teq[i])INV.teq[i]=id});delete INV.eq}
 INV.owned=INV.owned.filter(id=>ITEM_BY[id]);
 const allEq=()=>[...Object.values(INV.ceq),...INV.teq].filter(Boolean);const charEq=id=>[INV.ceq[id],...INV.teq].filter(Boolean);
@@ -6943,7 +7520,7 @@ let CUR='rod';
 const LV_MAX=60;
 const FACE_SRC=document.querySelector('.pslot.me img').src;
 /* 1레벨 기준 스탯 + 레벨당 성장 (Lv.30에서 기존 수치와 일치) */
-const HERO_G={rod:{b:{hp:120,atk:30,def:24,spd:100},g:{hp:11,atk:2.3,def:1.93,spd:.3}},yuria:{b:{hp:110,atk:33,def:22,spd:108},g:{hp:10,atk:2.45,def:1.8,spd:.3}},one:{b:{hp:130,atk:28,def:28,spd:96},g:{hp:10,atk:2.2,def:1.93,spd:0}}};
+const HERO_G={rod:{b:{hp:120,atk:30,def:24,spd:100},g:{hp:11,atk:2.3,def:1.93,spd:.3}},yuria:{b:{hp:110,atk:33,def:22,spd:108},g:{hp:10,atk:2.45,def:1.8,spd:.3}},one:{b:{hp:130,atk:28,def:28,spd:96},g:{hp:10,atk:2.2,def:1.93,spd:0}},lily:{b:{hp:115,atk:34,def:22,spd:104},g:{hp:10,atk:2.48,def:1.8,spd:.3}}};
 function heroStats(lv,id='rod'){const H=HERO_G[id]||HERO_G.rod,b=HEROES[id].base,d=lv-1;return{hp:Math.round(H.b.hp+d*H.g.hp),atk:Math.round(H.b.atk+d*H.g.atk),def:Math.round(H.b.def+d*H.g.def),spd:Math.round(H.b.spd+d*H.g.spd),crit:b.crit,cdmg:b.cdmg}}
 const luCost=lv=>14*lv+10;
 const expNeed=lv=>Math.round(30*Math.pow(lv,1.35))+40;
@@ -7010,7 +7587,7 @@ function artInfo(it,o={}){if(!it)return `<div class="empty">${o.empty||'아티�
   ${pic}<div class="alv"><span>Lv.${lv}</span>${eq&&!o.card?`<span class="eqtag"><img src="${FACE_SRC}" alt="">장착 중</span>`:''}</div>${ascRow}
   ${o.card?'':`<div class="apills">${rpill(it.r)}${elb(it.region.el)}</div><div class="asb">${Array.from({length:5},(_,i)=>`<i class="${i<it.r?'on':''}"></i>`).join('')}</div>`}
   <table class="dstat">${stat}</table>
-  <div class="aeff">${it.pas?`<div class="sigp">✦ ${it.pas}</div>`:''}<div>${it.sig?heroEmblem(it.id==='x1'?'rod':it.id==='x3'?'one':'yuria')+' '+HEROES[it.id==='x1'?'rod':it.id==='x3'?'one':'yuria'].name:heroEmblem(CUR)+' '+HEROES[CUR].name} 장착 시 적용<span class="on">ON</span></div><div>착용자의 ${STN[main]} <em>${it.st[main]>0?'+':''}${it.st[main]}</em>, ${it.r>=5?'치명타 확률 <em>7.5%</em> 증가':'치명타 확률 <em>5%</em> 증가'}</div><div>착용자가 ${elb(it.region.el)} 속성 기술 사용 시 위력 <em>${it.r>=5?'10.5%':'7%'}</em> 증가 (유지 1턴)</div>
+  <div class="aeff">${it.pas?`<div class="sigp">✦ ${it.pas}</div>`:''}<div>${it.sig?heroEmblem(SIG_CH[it.id]||'yuria')+' '+HEROES[SIG_CH[it.id]||'yuria'].name:heroEmblem(CUR)+' '+HEROES[CUR].name} 장착 시 적용<span class="on">ON</span></div><div>착용자의 ${STN[main]} <em>${it.st[main]>0?'+':''}${it.st[main]}</em>, ${it.r>=5?'치명타 확률 <em>7.5%</em> 증가':'치명타 확률 <em>5%</em> 증가'}</div><div>착용자가 ${elb(it.region.el)} 속성 기술 사용 시 위력 <em>${it.r>=5?'10.5%':'7%'}</em> 증가 (유지 1턴)</div>
   <div class="ul"><span class="ic">${SKI.ult}</span><span>얼티메이트 스킬<br>+Lv.${lv}</span></div></div>`}
 const ownedItems=()=>INV.owned.map(id=>ITEM_BY[id]);
 function sortItems(arr,key){const s={slot:(a,b)=>a.slot.localeCompare(b.slot),rar:(a,b)=>b.r-a.r,el:(a,b)=>a.region.el.localeCompare(b.region.el),lv:(a,b)=>ALV(b.id)-ALV(a.id)}[key]||(()=>0);return [...arr].sort(s)}
@@ -7192,7 +7769,13 @@ const NODES_O=[
   {n:'어둠과 물의 균형',eff:'공격력 +6',st:{atk:6},pos:[36,38],gold:1200,shard:2},
   {n:'무채색 결계',eff:'방어력 +6',st:{def:6},pos:[68,72],gold:1600,shard:2},
   {n:'흑물질의 여왕',eff:'공격력 +8 · HP +20',st:{atk:8,hp:20},pos:[78,52],gold:2400,shard:3}];
-const NODES_BY={rod:NODES,yuria:NODES_Y,one:NODES_O};
+const NODES_L=[
+  {n:'백화의 각인',eff:'HP +12',st:{hp:12},pos:[36,78],gold:500,shard:1},
+  {n:'빛의 보법',eff:'스피드 +4',st:{spd:4},pos:[27,60],gold:800,shard:1},
+  {n:'응축된 주먹',eff:'공격력 +6',st:{atk:6},pos:[36,38],gold:1200,shard:2},
+  {n:'성역의 수호',eff:'방어력 +6',st:{def:6},pos:[68,72],gold:1600,shard:2},
+  {n:'마지막 생명',eff:'공격력 +8 · 치명타 +4%',st:{atk:8,crit:4},pos:[78,52],gold:2400,shard:3}];
+const NODES_BY={rod:NODES,yuria:NODES_Y,one:NODES_O,lily:NODES_L};const SIG_CH={x1:'rod',x2:'yuria',x3:'one',x4:'lily'};
 function nodeBonus(id='rod'){const b={atk:0,def:0,hp:0,spd:0,crit:0,cdmg:0},N=NODES_BY[id]||NODES,n=chP(id).nodes;for(let i=0;i<n;i++)for(const k in N[i].st)b[k]+=N[i].st[k];return b}
 let nodeSel=null;
 function renderNodes(){
@@ -7211,7 +7794,7 @@ function renderNodes(){
   $('nGo').onclick=()=>{if(!can)return;PROG.gold-=nd.gold;P.shards-=nd.shard;P.nodes++;saveProg();
     const f=document.createElement('div');f.className='nflash';c.appendChild(f);requestAnimationFrame(()=>f.classList.add('go'));setTimeout(()=>f.remove(),900);
     const r=c.getBoundingClientRect(),s=stage.getBoundingClientRect();burst(r.left-s.left+r.width*nd.pos[0]/100,r.top-s.top+r.height*nd.pos[1]/100,40,['#ffd76a','#fff3c4','#ffffff'],{sp:320,life:.9,s:3});
-    toast(P.nodes>=5?(CUR==='rod'?'모든 마력 노드 개방 — 흑월이 색을 되찾았다':'모든 마력 노드 개방 — 홍련이 색을 되찾았다'):`노드 0${P.nodes} 개방 · 돌파 ${P.nodes}/5`);nodeSel=Math.min(P.nodes,4);renderNodes()};
+    toast(P.nodes>=5?(CUR==='rod'?'모든 마력 노드 개방 — 흑월이 색을 되찾았다':CUR==='lily'?'모든 마력 노드 개방 — 백화가 만개했다':'모든 마력 노드 개방 — 홍련이 색을 되찾았다'):`노드 0${P.nodes} 개방 · 돌파 ${P.nodes}/5`);nodeSel=Math.min(P.nodes,4);renderNodes()};
 }
 const _setDetailTab=setDetailTab;
 setDetailTab=function(k){$('detail').classList.toggle('nodetab',k==='node');if(k==='node'){$('detail').classList.remove('arti');$('dTabs').querySelectorAll('.dtab').forEach(t=>t.classList.toggle('on',t.dataset.tab==='node'));renderNodes();return}_setDetailTab(k)};
@@ -7229,6 +7812,8 @@ const BANNERS=[
     lines:[['SSR','쿠죠 유리아'],['SSR','홍련야행 · 紅蓮夜行']],pick:{n:'쿠죠 유리아',r:5},feat:'x2',bgArt:'key',stage:'yuria',thumb:'linear-gradient(120deg,#5a0a14,#15060a)'},
   {id:'picko',cls:'pick one',name:'온리 원',en:'Only One · Pick Up',title:'픽업 소환',tag:'신규 출시!',ga:'#b9b9c9',ga2:'#ffffff',time:'7일 남음',ch:'one',
     lines:[['SSR','온리 원'],['SSR','흑익의 여왕 · 黒翼の女王']],pick:{n:'온리 원',r:5},feat:'x3',bgArt:'okey',stage:'one',thumb:'linear-gradient(120deg,#2a2a33,#0a0a0e)'},
+  {id:'pickl',cls:'pick lily',name:'릴리바이스',en:'Lilyweiss · Pick Up',title:'픽업 소환',tag:'신규 출시!',ga:'#ffe08a',ga2:'#ffffff',time:'7일 남음',ch:'lily',
+    lines:[['SSR','릴리바이스'],['SSR','철혈의 전장 · 鉄血の戦場']],pick:{n:'릴리바이스',r:5},feat:'x4',bgArt:'lkey',stage:'lily',thumb:'linear-gradient(120deg,#6a5a2a,#15120a)'},
   {id:'std',cls:'std',name:'상시 소환',en:'Gacha · Standard',title:'상시 소환',tag:'상시 개최!',ga:'#b9a0f4',ga2:'#e9e0ff',time:'',
     lines:[['SSR','마법사 확정'],['SSR','아티팩트 확정']],pick:null,feat:'stack',bgArt:'lobby',stage:'awk',thumb:'linear-gradient(120deg,#1e3a7a,#0a1226)'}];
 let gSel=0;
@@ -7241,13 +7826,13 @@ const mgSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 function openGacha(i){show('gacha');if(i!=null)gSel=i;renderGacha()}
 function renderGacha(){
   const bn=BANNERS[gSel],g=$('gacha');g.className='scr gacha '+bn.cls;g.style.setProperty('--ga',bn.ga);g.style.setProperty('--ga2',bn.ga2);
-  $('gBgArt').style.backgroundImage=bn.bgArt==='char'?`url(${ROSTER[0].img})`:bn.bgArt==='face'?`url(${FACE_SRC})`:bn.bgArt==='lobby'?`url(${LOBBY_SRC})`:bn.bgArt==='key'?`url(${HEROES.yuria.nodeArt})`:bn.bgArt==='okey'?`url(${HEROES.one.nodeArt})`:'none';$('gBgArt').classList.toggle('scene',bn.bgArt==='lobby'||bn.bgArt==='key'||bn.bgArt==='okey');
-  $('gStage').innerHTML=bn.stage==='hero'?`<span class="glow"></span><img class="ghero" src="${ROSTER[0].img}" alt="">`:bn.stage==='yuria'?`<span class="glow"></span><img class="ghero yu" src="${HEROES.yuria.img}" alt="">`:bn.stage==='one'?`<span class="glow"></span><img class="ghero on" src="${HEROES.one.img}" alt="">`
+  $('gBgArt').style.backgroundImage=bn.bgArt==='char'?`url(${ROSTER[0].img})`:bn.bgArt==='face'?`url(${FACE_SRC})`:bn.bgArt==='lobby'?`url(${LOBBY_SRC})`:bn.bgArt==='key'?`url(${HEROES.yuria.nodeArt})`:bn.bgArt==='okey'?`url(${HEROES.one.nodeArt})`:bn.bgArt==='lkey'?`url(${HEROES.lily.nodeArt})`:'none';$('gBgArt').classList.toggle('scene',bn.bgArt==='lobby'||bn.bgArt==='key'||bn.bgArt==='okey'||bn.bgArt==='lkey');
+  $('gStage').innerHTML=bn.stage==='hero'?`<span class="glow"></span><img class="ghero" src="${ROSTER[0].img}" alt="">`:bn.stage==='yuria'?`<span class="glow"></span><img class="ghero yu" src="${HEROES.yuria.img}" alt="">`:bn.stage==='one'?`<span class="glow"></span><img class="ghero on" src="${HEROES.one.img}" alt="">`:bn.stage==='lily'?`<span class="glow"></span><img class="ghero li" src="${HEROES.lily.img}" alt="">`
     :bn.stage==='trio'?`<img class="trio2" src="${BACK2_IMG||ROSTER[0].img}" alt=""><img class="trio" src="${ROSTER[0].img}" alt="">`
     :`<img class="awk" src="${BACK2_IMG||ROSTER[0].img}" alt="">`;
   $('gTitle').innerHTML=`${bn.title} <i class="qm">?</i>`;
   $('gTickets').textContent=fmt(PROG.tickets);$('gGems').textContent=fmt(PROG.gems);$('gPts').textContent=fmt(PROG.pts);
-  $('gThumbs').innerHTML=BANNERS.map((b,i)=>{const img=b.id==='picky'?`<img src="img/yuria_face_sq.webp" alt="" style="right:-2%;top:-40%;height:190%;width:auto">`:b.id==='picko'?`<img src="${HEROES.one.nodeArt}" alt="" style="left:0;top:-20%;width:100%">`:b.id==='std'?`<img src="${LOBBY_SRC}" alt="" style="left:0;top:-40%;width:100%">`:`<img src="${ROSTER[0].img}" alt="" style="right:-6%;top:-10%;height:170%">`;
+  $('gThumbs').innerHTML=BANNERS.map((b,i)=>{const img=b.id==='picky'?`<img src="img/yuria_face_sq.webp" alt="" style="right:-2%;top:-40%;height:190%;width:auto">`:b.id==='picko'?`<img src="${HEROES.one.nodeArt}" alt="" style="left:0;top:-20%;width:100%">`:b.id==='pickl'?`<img src="${HEROES.lily.nodeArt}" alt="" style="left:0;top:-30%;width:100%">`:b.id==='std'?`<img src="${LOBBY_SRC}" alt="" style="left:0;top:-40%;width:100%">`:`<img src="${ROSTER[0].img}" alt="" style="right:-6%;top:-10%;height:170%">`;
     return `<button class="gth${i===gSel?' on':''}" data-i="${i}" style="--tb:${b.thumb}"><span class="tbg"></span>${img}<span class="tgl"></span><span class="tsub">${b.id==='std'?'STANDARD':'PICK UP'}</span><span class="tnm">${b.name}</span></button>`}).join('');
   $('gThumbs').querySelectorAll('.gth').forEach(t=>t.onclick=()=>{gSel=+t.dataset.i;renderGacha()});
   $('gPanel').innerHTML=`<span class="gtag">${bn.tag}</span><div class="gname"><i class="st a">✦</i><i class="st b">✦</i><i class="st c">✦</i>${bn.name}<small>${bn.en}</small></div><div class="gline"></div>
@@ -7261,8 +7846,8 @@ function renderGacha(){
 const POOL_ART=Object.values(ITEM_BY);
 function rollOne(bn){
   const r=Math.random();
-  if(r<0.05)return{type:'char',id:bn.ch||['rod','yuria','one'][Math.floor(Math.random()*3)]};
-  if(r<0.10){const pick=bn.id==='pick'?ITEM_BY['x1']:bn.id==='picky'?ITEM_BY['x2']:bn.id==='picko'?ITEM_BY['x3']:null;const ssr=POOL_ART.filter(i=>i.r>=5);return{type:'art',it:pick&&Math.random()<.5?pick:ssr[Math.floor(Math.random()*ssr.length)]}}
+  if(r<0.05)return{type:'char',id:bn.ch||['rod','yuria','one','lily'][Math.floor(Math.random()*4)]};
+  if(r<0.10){const pick=bn.id==='pick'?ITEM_BY['x1']:bn.id==='picky'?ITEM_BY['x2']:bn.id==='picko'?ITEM_BY['x3']:bn.id==='pickl'?ITEM_BY['x4']:null;const ssr=POOL_ART.filter(i=>i.r>=5);return{type:'art',it:pick&&Math.random()<.5?pick:ssr[Math.floor(Math.random()*ssr.length)]}}
   if(r<0.22){const sr=POOL_ART.filter(i=>i.r<5);return{type:'art',it:sr[Math.floor(Math.random()*sr.length)]}}
   if(r<0.45)return{type:'mat',n:'경험의 서',k:'books',q:1};
   if(r<0.65)return{type:'mat',n:'골드',k:'gold',q:300};
@@ -7272,7 +7857,7 @@ const MATBG={books:'linear-gradient(160deg,#4a3f8a,#1d1838)',shards:'linear-grad
 const MATIC={books:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z"/><path d="M8 17h11M9 8h6M9 11h4"/></svg>',shards:'<svg viewBox="0 0 24 24" fill="#c9b6ff"><path d="M12 2l3 7 7 1-5 5 1.5 7L12 18.5 5.5 22 7 15 2 10l7-1Z"/></svg>',gold:'<i class="coin" style="width:40%;height:40%"></i>'};
 function applyRoll(x){
   if(x.type==='char'){const H=HEROES[x.id],dup=isOwned(x.id);if(dup)chP(x.id).shards+=3;else{PROG.owned.push(x.id);const c=ROSTER.find(c=>c.id===x.id);if(c)c.owned=true}
-    return{r:5,html:`<div class="chr"><img class="${x.id==='yuria'?'yu':x.id==='one'?'on':''}" src="${H.img}" alt=""><span class="rb r5"></span><span class="dup">${dup?'중복 → 흑월의 조각 ×3':'NEW!'}</span><span class="plate">${H.name}</span></div>`,name:H.name,isChar:true,chId:x.id}}
+    return{r:5,html:`<div class="chr"><img class="${x.id==='yuria'?'yu':x.id==='one'?'on':x.id==='lily'?'li':''}" src="${H.img}" alt=""><span class="rb r5"></span><span class="dup">${dup?'중복 → 흑월의 조각 ×3':'NEW!'}</span><span class="plate">${H.name}</span></div>`,name:H.name,isChar:true,chId:x.id}}
   if(x.type==='art'){const it=x.it,dup=INV.owned.includes(it.id);if(dup){PROG.adup=PROG.adup||{};PROG.adup[it.id]=(PROG.adup[it.id]||0)+1;PROG.gold+=it.r>=5?300:100}else INV.owned.push(it.id);
     return{r:it.r,it,dup,html:artCardArt(it)+(dup?`<span class="dup">중복 → 돌파 조각 +1 · 골드 ${it.r>=5?300:100}</span>`:''),name:it.n}}
   PROG[x.k]+=x.q;const DESC={books:'마법사의 경험을 담은 책. 레벨 업에 사용한다.',shards:'마력 노드 개방에 사용한다.',gold:'흑월 지구의 통화.'};return{r:0,q:x.q,bg:MATBG[x.k],ic:MATIC[x.k],desc:DESC[x.k],html:`<div class="mat" style="--bg:${MATBG[x.k]}">${MATIC[x.k]}<b>×${x.q}</b><small>${x.n}</small></div>`,name:x.n};
@@ -7327,7 +7912,7 @@ async function playSummon(res){
 }
 function revealCard(c,quiet){
   if(c.classList.contains('open'))return;c.classList.add('open');const r=gReveal[+c.dataset.i];
-  if(r.r>=5&&!quiet){const b=document.createElement('div');b.className='gssr-banner';b.innerHTML=`${r.isChar?`<img src="${(HEROES[r.chId]||ROSTER[0]).img}" alt=""${r.chId==='yuria'?' class="yu"':r.chId==='one'?' class="on"':''}>`:''}<span><span class="t">SSR</span><br><span class="n">${r.name}</span></span>`;$('gSummon').appendChild(b);setTimeout(()=>b.remove(),2500);
+  if(r.r>=5&&!quiet){const b=document.createElement('div');b.className='gssr-banner';b.innerHTML=`${r.isChar?`<img src="${(HEROES[r.chId]||ROSTER[0]).img}" alt=""${r.chId==='yuria'?' class="yu"':r.chId==='one'?' class="on"':r.chId==='lily'?' class="li"':''}>`:''}<span><span class="t">SSR</span><br><span class="n">${r.name}</span></span>`;$('gSummon').appendChild(b);setTimeout(()=>b.remove(),2500);
     const rect=c.getBoundingClientRect(),s=stage.getBoundingClientRect();burst(rect.left-s.left+rect.width/2,rect.top-s.top+rect.height/2,40,['#f4a6d6','#c895e0','#c6f6ff','#fff'],{sp:320,life:.9,s:3})}
   else if(r.r===4&&!quiet){const rect=c.getBoundingClientRect(),s=stage.getBoundingClientRect();burst(rect.left-s.left+rect.width/2,rect.top-s.top+rect.height/2,16,['#ffd76a','#fff3c4'],{sp:200,life:.6,s:2.5})}
 }
@@ -7867,6 +8452,39 @@ button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;
 .coex.tri .cx-m{font-family:"Jua",sans-serif;font-size:clamp(18px,3cqw,32px);color:#e8e8f0;text-shadow:0 0 12px #fff,0 2px 0 #000;position:relative;z-index:2;animation:cxIn .6s .2s cubic-bezier(.2,.8,.3,1) backwards}
 .coex.tri .cx-t{text-shadow:0 0 18px #fff,0 0 36px #ff1c3a,0 0 54px #c9b6ff}
 .coex.tri .cx-bg::before{background:conic-gradient(from 0deg,#c9b6ff50,#ff1c3a50,#ffffff50,#c9b6ff50,#ff1c3a50,#ffffff50,#c9b6ff50);animation:spin 3s linear infinite}
+/* ── 릴리바이스 영역(마지막 생명): 흰 꽃의 성역 ── */
+.tbroot.dom-light #bg{filter:brightness(1.35) saturate(.6) sepia(.25);opacity:.5}
+.tbroot.dom-light .stage{filter:contrast(1.05) saturate(.9) brightness(1.08)}
+.tbroot.dom-light .stage .domtint{opacity:1;background:radial-gradient(ellipse at 50% 60%,#fff7d070 0,#e8dcff30 45%,#20183a90 100%)}
+.tbroot.dom-lit .stage::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 100%,#fff3c060 0,transparent 55%);mix-blend-mode:screen;animation:litPulse 1.6s ease-in-out infinite alternate}
+@keyframes litPulse{to{opacity:.45}}
+/* 네 영역 공명 */
+.tbroot.dom-quad #bg{background-image:url(img/dombg.webp);filter:saturate(1.6) contrast(1.1) brightness(.8);opacity:.7}
+.tbroot.dom-quad .stage{filter:contrast(1.18) saturate(1.1)}
+.tbroot.dom-quad .stage .domtint{opacity:1;background:linear-gradient(180deg,#5a001080,#0a061290),url(img/dombg.webp) center 60%/cover}
+.tbroot.dom-quad .stage .domtint::after{content:"";position:absolute;inset:-40%;background:conic-gradient(from 0deg,#ff1c3a38,#ffffff30,#c9b6ff38,#ffe08a40,#ff1c3a38,#ffffff30,#c9b6ff38,#ffe08a40,#ff1c3a38);animation:spin 7s linear infinite;mix-blend-mode:screen}
+.tbroot.dom-quad .stage::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 6cqw #ffe08a70,inset 0 0 12cqw #ff1c3a50,inset 0 0 20cqw #c9b6ff40;animation:quadPulse 1.6s ease-in-out infinite alternate}
+@keyframes quadPulse{to{box-shadow:inset 0 0 9cqw #ffffff70,inset 0 0 16cqw #ffe08a50,inset 0 0 24cqw #ff1c3a40}}
+.coex.quad{grid-template-rows:auto auto auto;gap:.4cqw}
+.coex.quad .cx-bg{background:radial-gradient(ellipse at 50% 50%,#2a1a3a 0,#0a0612 55%,#000 100%)}
+.coex.quad .cx-bg::before{background:conic-gradient(from 0deg,#ffe08a60,#ff1c3a50,#ffffff60,#c9b6ff50,#ffe08a60,#ff1c3a50,#ffffff60,#c9b6ff50,#ffe08a60);animation:spin 2.4s linear infinite}
+.coex.quad .qx{position:relative;width:min(70cqw,520px);aspect-ratio:2/1;display:grid;place-items:center}
+.coex.quad .qn{position:absolute;font-family:"Jua",sans-serif;font-size:clamp(15px,2.4cqw,26px);color:#fff;text-shadow:0 0 12px #fff,0 2px 0 #000;white-space:nowrap;animation:qIn .7s cubic-bezier(.2,.8,.3,1) backwards}
+.coex.quad .q1{left:0;top:50%;transform:translateY(-50%);color:#ffd0d8;text-shadow:0 0 14px #ff1c3a,0 2px 0 #000;animation-delay:.1s}
+.coex.quad .q2{right:0;top:50%;transform:translateY(-50%);color:#e8e8f0;text-shadow:0 0 14px #fff,0 2px 0 #000;animation-delay:.25s}
+.coex.quad .q3{left:50%;top:0;transform:translateX(-50%);color:#e2d6ff;text-shadow:0 0 14px #c9b6ff,0 2px 0 #000;animation-delay:.4s}
+.coex.quad .q4{left:50%;bottom:0;transform:translateX(-50%);color:#fff3c4;text-shadow:0 0 14px #ffe08a,0 2px 0 #000;animation-delay:.55s}
+@keyframes qIn{from{opacity:0;filter:blur(6px);letter-spacing:.4em}to{opacity:1;filter:none;letter-spacing:.05em}}
+.coex.quad .qc{position:absolute;left:50%;top:50%;width:4cqw;height:4cqw;min-width:30px;min-height:30px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,#fff 0,#ffe08a 35%,#ff1c3a80 60%,transparent 70%);box-shadow:0 0 3cqw #fff,0 0 6cqw #ffe08a,0 0 9cqw #ff1c3a;animation:qCore 1.1s .9s cubic-bezier(.2,.8,.3,1) both}
+@keyframes qCore{0%{transform:translate(-50%,-50%) scale(0)}60%{transform:translate(-50%,-50%) scale(1.6)}100%{transform:translate(-50%,-50%) scale(1)}}
+.coex.quad .qr{position:absolute;left:50%;top:50%;width:6cqw;height:6cqw;border-radius:50%;border:2px solid #fff;transform:translate(-50%,-50%);opacity:0;animation:qRing 1.6s 1.1s ease-out infinite}
+.coex.quad .r2{border-color:#ff6a8a;animation-delay:1.4s}.coex.quad .r3{border-color:#c9b6ff;animation-delay:1.7s}
+@keyframes qRing{0%{opacity:.9;transform:translate(-50%,-50%) scale(.3)}100%{opacity:0;transform:translate(-50%,-50%) scale(9)}}
+.coex.quad .cx-t{font-size:clamp(34px,7.5cqw,88px);text-shadow:0 0 18px #fff,0 0 36px #ffe08a,0 0 54px #ff1c3a,0 0 72px #c9b6ff;animation:cxIn .6s 1s cubic-bezier(.2,.8,.3,1) backwards}
+.coex.quad .cx-s{animation:cxIn .6s 1.2s cubic-bezier(.2,.8,.3,1) backwards}
+.banner.light .box{background:linear-gradient(180deg,#1a1830f0,#0d0b14f0)}
+.banner.light .kor{color:#fff3c4;text-shadow:0 0 10px #ffe08a,0 1px 0 #000}.banner.light .eng{color:#ffe08a}
+.ultv.noskip .skip{display:none}
 .banner.mono .kan{text-shadow:0 0 30px #fff}.banner.mono .kor{color:#e8e8f0;text-shadow:0 0 10px #fff}.banner.mono img{filter:grayscale(1) contrast(1.1)}
 .ultv.fit video{object-fit:contain;background:#000}
 .banner.ult img{width:auto;height:66cqh;max-width:60cqw;object-fit:contain;object-position:50% 0}
@@ -7912,28 +8530,34 @@ const TH={
     domain:{name:'혈야의 영지',fx:'ultfin',fxName:'궁극기 마무리'}},
   one:{fp:'50% 50%',skill:{name:'다크매터',el:'dark',els:['dark','water'],pow:70,hits:1,acc:100,gim:'shield',vfx:'darkburst'},
     ult:{name:'다크매터 폭발',el:'dark',els:['dark','water'],pow:150,hits:1,acc:100,gim:'def-',vfx:'darkburst',big:true,vid:'one_ult.mp4'},
-    domain:{name:'여왕의 다크매터',fx:'heal',fxName:'여왕의 가호'}}};
+    domain:{name:'여왕의 다크매터',fx:'heal',fxName:'여왕의 가호'}},
+  lily:{fp:'50% 40%',skill:{name:'빛의 주먹',el:'light',pow:60,hits:1,acc:100,gim:'fist',vfx:'lightfist'},
+    ult:{name:'오버클럭',el:'light',pow:170,hits:1,acc:100,gim:'overclock',vfx:'redfist',big:true,vid:'lily_ult.mp4'},
+    domain:{name:'마지막 생명',fx:'fist',fxName:'빛의 주먹 연타'}}};
+/* 릴리바이스: 빛의 주먹 시전 횟수 = 1 + 오버클럭 사용 횟수 (+전용 아티팩트 1) */
+const fistCount=h=>1+(h.ultUses||0)+((h.id==='lily'&&typeof hasSigL==='function'&&hasSigL())?1:0);
 const SFXMAP={slash:'slash_light',combo:'combo5',brk:'break',domain:'domain_ping'};
 function sfx(k,vol=.9){try{AUD.sfx(SFXMAP[k]||k,{vol})}catch(e){}}
 let running=false,paused=false,runId=0,domLock=false;
 const foe=()=>B.team[B.idx],alive=u=>u.cur>0,aliveH=()=>B.heroes.filter(alive);
-/* 영역: B.doms={yuria:{turns},one:{turns,stored}} · B.rodIn=로스바이세 영역 합류(공존) */
-const domCount=()=>Object.keys(B.doms||{}).length+(B.rodIn?1:0);
-const domOn=()=>domCount()>0,coexist=()=>domCount()>=2,trinity=()=>domCount()>=3;
+/* 영역: B.doms={yuria:{turns},one:{turns,stored}} · B.rodIn / B.lilyIn = 즉발형 영역(로스바이세·릴리바이스)의 합류(공존) */
+const domCount=()=>Object.keys(B.doms||{}).length+(B.rodIn?1:0)+(B.lilyIn?1:0);
+const domOn=()=>domCount()>0,coexist=()=>domCount()>=2,trinity=()=>domCount()>=3,quad=()=>domCount()>=4;
 const addDom=(v,u)=>{const us=u?[u]:aliveH();us.forEach(x=>{if(B.doms&&B.doms[x.id])return;x.dom=Math.min(100,x.dom+v)})};
 const addDealt=v=>{B.dealt+=v;if(B.doms&&B.doms.one)B.doms.one.stored+=v*.1};
-function domTint(){const d=B.doms||{},y=!!d.yuria,o=!!d.one,r=!!B.rodIn;let c='';
-  if(r&&y&&o)c='dom-trinity';else if(r&&y)c='dom-coexist';else if(r&&o)c='dom-monomoon';else if(y&&o)c='dom-crimson';else if(y)c='dom-blood';else if(o)c='dom-mono';
+function domTint(){const d=B.doms||{},y=!!d.yuria,o=!!d.one,r=!!B.rodIn,l=!!B.lilyIn;let c='';
+  if(r&&y&&o&&l)c='dom-quad';else if(r&&y&&o)c='dom-trinity';else if(r&&y)c='dom-coexist';else if(r&&o)c='dom-monomoon';else if(y&&o)c='dom-crimson';else if(y)c='dom-blood';else if(o)c='dom-mono';
+  if(l&&c!=='dom-quad')c=(c?c+' ':'')+(c?'dom-lit':'dom-light');
   tbroot.className='tbroot'+(c?' '+c:'')}
-const DOM_NAMES={rod:'흑월의 정원',yuria:'혈야의 영지',one:'여왕의 다크매터'};
+const DOM_NAMES={rod:'흑월의 정원',yuria:'혈야의 영지',one:'여왕의 다크매터',lily:'마지막 생명'};
 /* ===== 데미지 (텍스트 RPG + 원래 게임의 시그니처 보정) ===== */
 function damage(att,def,m,o={}){
   const st=s=>s>=0?(2+s)/2:2/(2-s),A=att.atk*st(att.stage.atk||0),D=def.def*st(def.stage.def||0);
   const base=((2*att.lv/5+2)*m.pow*A/D)/50+2;
   const pcrit=(att.id==='yuria'&&att.cur<=att.hp*.5?15:0)+(att.permCrit||0);
   const e=moveEff(m,def.els),stab=(m.els?att.els.some(x=>m.els.includes(x)):att.els.includes(m.el))?1.5:1,crit=Math.random()*100<(att.crit||5)+(o.crit||0)+pcrit;
-  const cx=coexist(),tri=trinity(),dm=domOn()?(att.hero?(tri?1.6:cx?1.45:1.3):def.hero?(tri?.5:cx?.6:.7):1):1,bk=(!def.hero&&def.broken>0)?1.15:1;
-  const sg=(att.hero&&((att.id==='rod'&&hasSig()&&(m.el==='light'||m.el==='dark'))||(att.id==='yuria'&&hasSigY()&&(m.el==='fire'||m.el==='dark'))||(att.id==='one'&&window.hasSigO&&hasSigO()&&(m.el==='dark'||m.el==='water'))))?1.1:1;
+  const cx=coexist(),tri=trinity(),qd=quad(),dm=domOn()?(att.hero?(qd?1.8:tri?1.6:cx?1.45:1.3):def.hero?(qd?.4:tri?.5:cx?.6:.7):1):1,bk=(!def.hero&&def.broken>0)?1.15:1;
+  const sg=(att.hero&&((att.id==='rod'&&hasSig()&&(m.el==='light'||m.el==='dark'))||(att.id==='yuria'&&hasSigY()&&(m.el==='fire'||m.el==='dark'))||(att.id==='one'&&typeof hasSigO==='function'&&hasSigO()&&(m.el==='dark'||m.el==='water'))||(att.id==='lily'&&typeof hasSigL==='function'&&hasSigL()&&m.el==='light')))?1.1:1;
   const pb=(att.id==='yuria'&&def.bleed>0)?1.15:1,pd=(def.hero&&def.id==='rod'&&domOn())?.9:1;
   let dmg=base*stab*e*(crit?(att.cdmg||150)/100:1)*dm*sg*pb*pd*bk*(.85+Math.random()*.15);let shielded=false;if(def.hero&&def.shield>0){dmg*=.5;shielded=true}
   return{dmg:Math.max(1,Math.round(dmg)),e,crit,shielded}}
@@ -7946,7 +8570,7 @@ function render(){
   if(!B)return;
   $('tTurn').textContent=B.turn;
   $('heroes').innerHTML=B.heroes.map(u=>{const r=Math.max(0,u.cur/u.hp);const tags=[];
-    if(B.doms&&B.doms[u.id])tags.push(`<span class="tag">${u.H.domain.fxName} ${B.doms[u.id].turns}턴</span>`);if(trinity())tags.push('<span class="tag gold">三域共鳴</span>');else if(coexist())tags.push('<span class="tag gold">領域共存</span>');if(u.stage.atk>0)tags.push(`<span class="tag">공격 +${u.stage.atk}</span>`);if(u.stage.def>0)tags.push(`<span class="tag">방어 +${u.stage.def}</span>`);if(u.shield)tags.push('<span class="tag">결계</span>');if(u.haste)tags.push('<span class="tag">선공</span>');if(u.awake)tags.push('<span class="tag gold">흑월 각성</span>');if(u.bleed>0)tags.push(`<span class="tag warn">출혈 ${u.bleed}</span>`);
+    if(B.doms&&B.doms[u.id])tags.push(`<span class="tag">${u.H.domain.fxName} ${B.doms[u.id].turns}턴</span>`);if(quad())tags.push('<span class="tag gold">四域共鳴</span>');else if(trinity())tags.push('<span class="tag gold">三域共鳴</span>');else if(coexist())tags.push('<span class="tag gold">領域共存</span>');if(u.stage.atk>0)tags.push(`<span class="tag">공격 +${u.stage.atk}</span>`);if(u.stage.def>0)tags.push(`<span class="tag">방어 +${u.stage.def}</span>`);if(u.shield)tags.push('<span class="tag">결계</span>');if(u.haste)tags.push('<span class="tag">선공</span>');if(u.awake)tags.push('<span class="tag gold">흑월 각성</span>');if(u.bleed>0)tags.push(`<span class="tag warn">출혈 ${u.bleed}</span>`);if(u.id==='lily')tags.push(`<span class="tag">빛의 주먹 ×${fistCount(u)}</span>`);
     return `<div class="unit${B.actId===u.id?' act':''}${alive(u)?'':' down'}" id="u_${u.id}"><img src="${u.H.face}" style="object-position:${u.H.fp||'50% 12%'}" alt=""><div class="nm">${elsOf(u)} ${u.name}<small>Lv.${u.lv}</small></div>
       <div class="bar hp${r<=.2?' low':r<=.5?' mid':''}"><i style="width:${r*100}%"></i></div><div class="sub"><span>HP</span><span>${Math.max(0,u.cur)}/${u.hp}</span></div>
       <div class="bar ult${u.ult>=100?' ready':''}"><i style="width:${u.ult}%"></i></div><div class="sub"><span>${u.H.ult.name}</span><span>${u.ult>=100?'READY':Math.floor(u.ult)+'%'}</span></div><div class="tags">${tags.join('')}</div></div>`}).concat(Array.from({length:Math.max(0,4-B.heroes.length)},()=>'<div class="unit empty"><span class="ph"></span><div class="nm">빈 자리</div></div>')).join('');
@@ -7979,13 +8603,15 @@ let effects=[];
 function fx(dur,draw,delay=0){return new Promise(res=>{effects.push({t0:performance.now()+delay,dur,draw,res});kick()})}
 function vloop(now){const dt=Math.min(.05,(now-flast)/1000);flast=now;fcx.clearRect(0,0,FW,FH);
   effects=effects.filter(e=>{const p=(now-e.t0)/(e.dur/SPEED);if(p<0)return true;if(p>=1){e.res();return false}e.draw(fcx,p);return true});
-  const ls=window.LightSlash&&LightSlash.active(),db=window.DarkBurst&&DarkBurst.active(),ds=window.DarkStorm&&DarkStorm.active();
+  const ls=window.LightSlash&&LightSlash.active(),db=window.DarkBurst&&DarkBurst.active(),ds=window.DarkStorm&&DarkStorm.active(),lf=window.LightFist&&LightFist.active(),rf=window.RedFist&&RedFist.active();
   let sx=0,sy=0;
+  if(lf){LightFist.draw(fcx);LightFist.update(dt*SPEED);const v=LightFist.shake();sx+=v[0];sy+=v[1]}
+  if(rf){RedFist.draw(fcx);RedFist.update(dt*SPEED);const v=RedFist.shake();sx+=v[0];sy+=v[1]}
   if(ls){LightSlash.draw(fcx);LightSlash.update(dt);const v=LightSlash.shake();sx+=v[0];sy+=v[1]}
   if(ds){DarkStorm.draw(fcx);DarkStorm.update(dt*SPEED);const v=DarkStorm.shake();sx+=v[0];sy+=v[1]}
   if(db){DarkBurst.draw(fcx);DarkBurst.update(dt*SPEED);const v=DarkBurst.shake();sx+=v[0];sy+=v[1]}
-  stageEl.style.translate=(ls||db||ds)?`${sx.toFixed(1)}px ${sy.toFixed(1)}px`:'';
-  if(ls||db||ds||effects.length)fraf=requestAnimationFrame(vloop);else{fraf=0;fcx.clearRect(0,0,FW,FH)}}
+  stageEl.style.translate=(ls||db||ds||lf||rf)?`${sx.toFixed(1)}px ${sy.toFixed(1)}px`:'';
+  if(ls||db||ds||lf||rf||effects.length)fraf=requestAnimationFrame(vloop);else{fraf=0;fcx.clearRect(0,0,FW,FH)}}
 /* 격파 시 가루가 되어 흩어지는 연출 */
 async function vfxDust(img){
   if(!img)return;img.classList.add('dust');
@@ -8008,6 +8634,11 @@ function foeBox(){const s=stageEl.getBoundingClientRect(),r=sprite.getBoundingCl
 function heroBox(){return{x:FW*.12,y:FH*.72,w:FW*.25,h:FH*.6}}
 function vfxLightSlash(onHit,lite){return new Promise(res=>{const t=foeBox();if(!window.LightSlash){onHit();return res()}
   LightSlash.spawn(t.x+(lite?(Math.random()-.5)*t.w*.2:0),t.y+(lite?(Math.random()-.5)*t.h*.2:0),{scale:Math.min(FW,FH)/700*(lite?.75:.85),angle:lite&&Math.random()<.5?2.6:-.35,screen:!lite&&!window.LITE,chroma:!lite&&!window.LITE,lite,onHit:()=>{onHit();setTimeout(res,lite?150:450/SPEED)}});kick()})}
+/* 릴리바이스 — 빛의 주먹 (LightFist) / 오버클럭 직후 붉은 주먹 (RedFist) */
+function vfxFist(onHit,o={}){return new Promise(res=>{const t=foeBox(),E=o.red?window.RedFist:window.LightFist;if(!E){onHit();return res()}
+  const sc=Math.min(FW,FH)/700*(o.red?1.05:o.lite?.72:.9);sfx(o.red?'rift':'stab',o.red?1:.55);
+  E.spawn(t.x+(o.lite?(Math.random()-.5)*t.w*.22:0),t.y+(o.lite?(Math.random()-.5)*t.h*.18:0),{scale:sc,size:o.red?1.15:o.lite?.9:1,tilt:o.lite?(Math.random()-.5)*.8:-.2,screen:!window.LITE&&!o.lite,
+    onHit:()=>{sfx('brk',o.red?1:.6);onHit();setTimeout(res,(o.red?800:o.lite?220:520)/SPEED)}});kick()})}
 /* 온리 원 — 다크매터 (DarkBurst) : 폭발 순간 피해 */
 function vfxDarkBurst(onBurst,big){return new Promise(res=>{const t=foeBox();if(!window.DarkBurst){onBurst();return res()}
   const sc=Math.min(FW,FH)/700*(big?1.05:.8);sfx('rift',big?1:.8);
@@ -8023,7 +8654,7 @@ function vfxDarkStorm(total){return new Promise(res=>{const f=foe();if(!alive(f)
     onEnd:()=>{res()}});kick()})}
 function vfxSkill(id,onHit){const S=window.SkillVFX&&SkillVFX[id];if(!S){onHit({index:0,total:1,weight:1});return sleep(500)}const h=heroBox(),t=foeBox();
   return S.play(skillCv,{from:{x:h.x+h.w*.1,y:h.y-h.h*.1},to:{x:t.x,y:t.y},shakeEl:stageEl,sceneEl:null,speed:SPEED,onHit})}
-function playUltVideo(src){return new Promise(res=>{const o=document.createElement('div');o.className='ultv'+(/one_ult/.test(src)?' fit':'');o.innerHTML='<video playsinline preload="auto"></video><button class="skip" type="button">건너뛰기 ▸</button>';const v=o.querySelector('video');let done=false;
+function playUltVideo(src){return new Promise(res=>{const o=document.createElement('div');o.className='ultv'+(/one_ult/.test(src)?' fit':'')+(/lily_ult/.test(src)?' noskip':'');o.innerHTML='<video playsinline preload="auto"></video><button class="skip" type="button">건너뛰기 ▸</button>';const v=o.querySelector('video');let done=false;
   const finish=ok=>{if(done)return;done=true;o.classList.add('out');v.pause();setTimeout(()=>o.remove(),300);res(ok)};
   v.addEventListener('ended',()=>finish(true));v.addEventListener('error',()=>finish(false));o.querySelector('.skip').onclick=e=>{e.stopPropagation();finish(true)};o.onclick=()=>finish(true);
   tbroot.appendChild(o);v.src=src;v.volume=AUD.vol?AUD.vol('sfx'):1;v.playbackRate=Math.min(4,SPEED);const p=v.play();if(p&&p.catch)p.catch(()=>{v.muted=true;v.play().catch(()=>finish(false))});setTimeout(()=>finish(true),9500/SPEED)})}
@@ -8036,7 +8667,7 @@ function adapt(){
   B.team.forEach(f=>{f.hero=false;f.rage=0;f.short=f.short||f.name;const im=f.img;const key=f.key;
     if(f.boss&&key==='boss_jester'){f.imgSt=st=>st==='death'?'foes/boss_jester_normal.webp':`foes/boss_jester_${st}.webp`}else if(typeof im==='function')f.imgSt=im;else f.imgSt=st=>`foes/${key}_${st}.webp`;
     f.img=f.imgSt('normal')});
-  B.actId=null;B.order=null;B.oi=0;B.doms={};B.rodIn=false;B.domReq=null;B._fainting=false;
+  B.actId=null;B.order=null;B.oi=0;B.doms={};B.rodIn=false;B.lilyIn=false;B.domReq=null;B._fainting=false;
 }
 async function waitPause(){while(paused)await new Promise(r=>setTimeout(r,120))}
 function roundOrder(){const us=[...aliveH().map(u=>({u,p:u.haste?1:0,s:u.spd,h:1})),{u:foe(),p:0,s:foe().spd,h:0}];us.sort((a,b)=>b.p-a.p||b.s-a.s||b.h-a.h);us.forEach(x=>x.u.haste=0);return us.map(x=>x.u)}
@@ -8084,6 +8715,8 @@ async function heroMove(h,m,o={}){
   const applyPart=(part,last)=>{if(!alive(f))return;sfx('hit',last?.7:.45);f.cur=Math.max(0,f.cur-part);addDealt(part);parts.push(part);foeSprite('hit',520);popFx((r.crit&&last?'<small>CRITICAL</small>':'')+part,r.crit&&last?'crit':'');if(last&&(o.ult||r.crit))shakeFx();render()};
   const apply=()=>{for(let i=0;i<hits;i++){const part=i===hits-1?r.dmg-dealt:Math.round(r.dmg/hits);dealt+=part;applyPart(part,i===hits-1)}};
   if(m.vfx==='light'){sfx('slash',o.lite?.6:.9);await vfxLightSlash(apply,o.lite)}
+  else if(m.vfx==='lightfist'){const n=o.ult?1:fistCount(h);if(n<=1)await vfxFist(apply);else{await fistBurst(h,n,m,{lite:false});return}}
+  else if(m.vfx==='redfist'){await vfxFist(apply,{red:true})}
   else if(m.vfx==='darkburst'){await vfxDarkBurst(apply,!!m.big)}
   else if(m.vfx&&window.SkillVFX&&SkillVFX[m.vfx]){sfx(m.vfx==='bloodBrush'?'ult_blood':m.vfx==='flashPoint'?'flash':'combo');const def=SkillVFX[m.vfx].def,ws=def.weights||def.hits.map(()=>1),sum=ws.reduce((a,b)=>a+b,0);
     await vfxSkill(m.vfx,hh=>{const last=hh.index===hh.total-1,part=last?Math.max(0,r.dmg-dealt):Math.round(r.dmg*hh.weight/sum);dealt+=part;applyPart(part,last)})}
@@ -8100,14 +8733,15 @@ function gimmick(h,m){const g=m.gim;if(!g)return;
   else if(g==='ult+'){h.ult=Math.min(100,h.ult+15)}
   else if(g==='dom+'){addDom(30,h)}
   else if(g==='bleed'&&alive(foe())){foe().bleed=2;log(`<em>${foe().short}</em>은(는) 출혈 상태가 되었다!</span>`.replace('</span>',''),'sys')}
-  else if(g==='shield'){const n=(h.id==='one'&&window.hasSigO&&hasSigO())?2:1;aliveH().forEach(u=>{u.shield=Math.max(u.shield||0,n)});log(`암흑물질이 아군을 감쌌다 — <strong>아군 전체 실드</strong> (다음 피격 ${n}회 50% 감경).`,'sys')}
+  else if(g==='shield'){const n=(h.id==='one'&&typeof hasSigO==='function'&&hasSigO())?2:1;aliveH().forEach(u=>{u.shield=Math.max(u.shield||0,n)});log(`암흑물질이 아군을 감쌌다 — <strong>아군 전체 실드</strong> (다음 피격 ${n}회 50% 감경).`,'sys')}
+  else if(g==='overclock'){h.ultUses=(h.ultUses||0)+1;log(`<strong>오버클럭</strong> — 출력이 한계를 넘었다. <strong>빛의 주먹</strong> 시전 횟수 +1 (현재 ×${fistCount(h)}).`,'sys')}
   else if(g==='def-'&&alive(foe())){const f=foe();f.stage.def=Math.max(-6,(f.stage.def||0)-2);log(`<em>${f.short}</em>의 방어가 크게 떨어졌다! (방어 -2)`,'sys')}
   render()}
 function breakHit(f,amt,e){if(!f.brkMax||f.broken>0||e<=1)return;f.brk=Math.max(0,f.brk-amt);if(f.brk<=0){f.broken=1;sfx('brk');flashFx();shakeFx();log(`<strong>BREAK!</strong> <em>${f.short}</em>의 자세가 무너졌다! (받는 피해 +15% · 1턴 행동 불가)`,'ult')}}
 async function heroUlt(h,free){
   const f=foe(),m=h.H.ult;if(!free)h.ult=0;render();
-  log(`<strong>${h.name}</strong>의 궁극기 — <strong>${m.name}</strong>!`,'ult');sfx(h.id==='yuria'?'ult_blood':h.id==='one'?'boss_ult':'ult_moon');
-  const ok=await playUltVideo(m.vid);if(!ok)await banner(m.name,h.name,'ULTIMATE',h.id==='yuria'?'blood ult':h.id==='one'?'mono ult':'ult',h.H.img,1200);if(B.over||!alive(foe()))return;
+  log(`<strong>${h.name}</strong>의 궁극기 — <strong>${m.name}</strong>!`,'ult');sfx(h.id==='yuria'?'ult_blood':h.id==='one'?'boss_ult':h.id==='lily'?'flash':'ult_moon');
+  const ok=await playUltVideo(m.vid);if(!ok)await banner(m.name,h.name,'ULTIMATE',h.id==='yuria'?'blood ult':h.id==='one'?'mono ult':h.id==='lily'?'light ult':'ult',h.H.img,1200);if(B.over||!alive(foe()))return;
   if(h.id==='rod'&&!h.awake){h.awake=true;log('<strong>흑월 각성</strong> — 로스바이세의 모습이 변했다. (궁극기 게이지 획득 증가)','ult')}
   await heroMove(h,m,{ult:true,free:true});addDom(15,h);render();
 }
@@ -8121,10 +8755,7 @@ async function runDomain(id){
       const others=Object.keys(B.doms);
       sfx('domain');log(`<strong>영역 전개 — 흑월의 정원.</strong>`,'domain');
       await banner('領域展開','흑월의 정원','DOMAIN ✦ EXPANSION','',h.H.cutin,1500);
-      if(others.length){B.rodIn=true;domTint();sfx('domain',.7);
-        if(others.length>=2){await showTrinity();log(`<strong>三域共鳴!</strong> <em>혈야의 영지</em> ✦ <em>여왕의 다크매터</em> ✦ <em>흑월의 정원</em> — 세 영역이 공명한다. 공격 ×1.6, 받는 피해 ×0.5.`,'domain')}
-        else{await showCoexist(DOM_NAMES[others[0]],'흑월의 정원');log(`<strong>영역 공존!</strong> <em>${DOM_NAMES[others[0]]}</em> ✦ <em>흑월의 정원</em> — 영역이 유지되는 동안 공격 ×1.45, 받는 피해 ×0.6.`,'domain')}
-        render()}
+      if(others.length||B.lilyIn){B.rodIn=true;domTint();await resonance('rod');render()}
       log(`검은 손들이 전장을 감쌌다 — <strong>일섬 7연속</strong>!`,'domain');
       await rodBurst(h,7);
       if(!B.over&&!alive(foe())){domLock=false;await foeFaint()}
@@ -8140,13 +8771,37 @@ async function runDomain(id){
       B.doms.one={turns:3,stored:0};domTint();await afterDomainOpen('one');
       log(`세상의 색이 빠져나갔다. <strong>3턴</strong> 동안 공격 ×1.3, 받는 피해 ×0.7 · 매 턴 아군 전체 HP 8% 회복 · 아군이 준 피해의 <strong>10%</strong>를 모아 영역이 닫힐 때 <strong>암흑 폭풍</strong>으로 되돌린다.`,'domain');
       healAll(.08,'여왕의 가호');
+    }else if(id==='lily'){
+      const others=Object.keys(B.doms);
+      sfx('domain');log(`<strong>영역 전개 — 마지막 생명.</strong>`,'domain');
+      await banner('','마지막 생명','SANCTUARY ✦ OF ✦ WHITE BLOSSOMS','light',h.H.cutin,1500);
+      if(others.length||B.rodIn){B.lilyIn=true;domTint();await resonance('lily');render()}
+      const n=4+fistCount(h);
+      log(`하얀 꽃잎이 전장을 뒤덮었다 — <strong>빛의 주먹 ${n}연속</strong>!`,'domain');
+      await fistBurst(h,n,{...h.H.skill},{lite:true,burst:true});
+      if(!B.over&&!alive(foe())){domLock=false;await foeFaint()}
     }
   }finally{domLock=false;render()}
 }
 /* 두 번째 3턴 영역이 열렸을 때(혈야+다크매터) 겹침 연출 */
-async function afterDomainOpen(id){const o=Object.keys(B.doms).filter(k=>k!==id);if(!o.length)return;
-  if(B.rodIn&&o.length>=1){await showTrinity();log(`<strong>三域共鳴!</strong> 세 영역이 공명한다. 공격 ×1.6, 받는 피해 ×0.5.`,'domain')}
-  else{sfx('domain',.7);await showCoexist(DOM_NAMES[o[0]],DOM_NAMES[id]);log(`<strong>영역 공존!</strong> <em>${DOM_NAMES[o[0]]}</em> ✦ <em>${DOM_NAMES[id]}</em> — 검붉은 세계. 공격 ×1.45, 받는 피해 ×0.6.`,'domain')}}
+async function afterDomainOpen(id){if(domCount()<2)return;await resonance(id)}
+/* 열려 있는 영역 목록 (열린 순서: 3턴형 → 로스바이세 → 릴리바이스, 마지막에 지금 연 것) */
+function openDoms(last){const a=Object.keys(B.doms||{});if(B.rodIn)a.push('rod');if(B.lilyIn)a.push('lily');return a.filter(k=>k!==last).concat([last])}
+async function resonance(last){const ids=openDoms(last),names=ids.map(k=>DOM_NAMES[k]);sfx('domain',.7);
+  if(ids.length>=4){await showQuad(names);log(`<strong>四域共鳴!</strong> ${names.map(n=>`<em>${n}</em>`).join(' ✦ ')} — 네 영역이 하나로 공명한다. 공격 ×1.8, 받는 피해 ×0.4.`,'domain')}
+  else if(ids.length>=3){await showTrinity(names);log(`<strong>三域共鳴!</strong> ${names.map(n=>`<em>${n}</em>`).join(' ✦ ')} — 세 영역이 공명한다. 공격 ×1.6, 받는 피해 ×0.5.`,'domain')}
+  else{await showCoexist(names[0],names[1]);log(`<strong>영역 공존!</strong> <em>${names[0]}</em> ✦ <em>${names[1]}</em> — 영역이 유지되는 동안 공격 ×1.45, 받는 피해 ×0.6.`,'domain')}}
+/* 릴리바이스 — 빛의 주먹 연타 (기술 다중 시전 / 영역 전개) */
+async function fistBurst(h,n,m,o={}){
+  const f=foe();if(!alive(f))return;let fired=0,sum=0;const parts=[];
+  await new Promise(res=>{for(let i=0;i<n;i++){setTimeout(()=>{if(B.over||!alive(f)){if(++fired>=n)res();return}
+      vfxFist(()=>{if(B.over||!alive(f)){if(++fired>=n)res();return}const r=damage(h,f,m);f.cur=Math.max(0,f.cur-r.dmg);addDealt(r.dmg);sum+=r.dmg;parts.push(r.dmg);
+        if(!o.burst){h.ult=Math.min(100,h.ult+Math.round(12/n*10)/10);addDom(Math.round(7/n*10)/10,h)}else{h.ult=Math.min(100,h.ult+5);addDom(3,h)}
+        breakHit(f,o.burst?8:Math.max(6,Math.round(15/n)),r.e);foeSprite('hit',400);popFx((r.crit?'<small>CRITICAL</small>':'')+r.dmg,r.crit?'crit':'');render();
+        log(`<strong>빛의 주먹 ×${i+1}</strong> — <em>${f.short}</em>에게 <i>${r.dmg}</i>의 피해!${r.crit?' <span style="color:#ffe39a">급소!</span>':''}${r.e>1?' <span style="color:#9fe3a8">효과가 굉장했다!</span>':''}`,r.crit?'crit hero':'hero');
+        if(++fired>=n)res()},{lite:o.lite||i<n-1})},i*(o.lite?170:300)/SPEED)}});
+  if(parts.length)log(`빛의 주먹 ${n}연속 — 총 <i>${sum}</i>의 피해!`,'ult');render();await sleep(300);
+}
 function healAll(pct,why){const parts=[];aliveH().forEach(u=>{const bonus=(u.id==='one')?1.2:1;const v=Math.min(u.hp-u.cur,Math.round(u.hp*pct*bonus));if(v>0){u.cur+=v;parts.push(`<strong>${u.name}</strong> +${v}`)}});if(parts.length)log(`${why} — ${parts.join(' · ')} 회복.`,'sys');render()}
 async function rodBurst(h,n){
   const f=foe();if(!alive(f))return;const m={...h.H.skill,pow:Math.round(h.H.skill.pow*.5)};let fired=0,sum=0;
@@ -8158,7 +8813,9 @@ async function rodBurst(h,n){
   log(`일섬 7연속 — 총 <i>${sum}</i>의 피해!`,'ult');h.haste=1;render();await sleep(300);
 }
 async function showCoexist(a='혈야의 영지',b='흑월의 정원'){const d=document.createElement('div');d.className='coex';d.innerHTML=`<div class="cx-bg"></div><div class="cx-a">${a}</div><div class="cx-x">✦</div><div class="cx-b">${b}</div><div class="cx-t">領域共存</div><div class="cx-s">DOMAIN ✦ COEXISTENCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();await sleep(2100);d.classList.add('out');await sleep(400);d.remove()}
-async function showTrinity(){const d=document.createElement('div');d.className='coex tri';d.innerHTML=`<div class="cx-bg"></div><div class="cx-a">혈야의 영지</div><div class="cx-x">✦</div><div class="cx-m">여왕의 다크매터</div><div class="cx-x">✦</div><div class="cx-b">흑월의 정원</div><div class="cx-t">三域共鳴</div><div class="cx-s">TRINITY ✦ RESONANCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();sfx('boss_ult',.8);await sleep(2600);d.classList.add('out');await sleep(400);d.remove()}
+async function showTrinity(n=['혈야의 영지','여왕의 다크매터','흑월의 정원']){const d=document.createElement('div');d.className='coex tri';d.innerHTML=`<div class="cx-bg"></div><div class="cx-a">${n[0]}</div><div class="cx-x">✦</div><div class="cx-m">${n[1]}</div><div class="cx-x">✦</div><div class="cx-b">${n[2]}</div><div class="cx-t">三域共鳴</div><div class="cx-s">TRINITY ✦ RESONANCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();sfx('boss_ult',.8);await sleep(2600);d.classList.add('out');await sleep(400);d.remove()}
+/* 네 영역 공명: 네 이름이 십자로 모이고 중앙에서 흑·백·홍·자의 빛이 터진다 */
+async function showQuad(n){const d=document.createElement('div');d.className='coex quad';d.innerHTML=`<div class="cx-bg"></div><div class="qx"><span class="qn q1">${n[0]}</span><span class="qn q2">${n[1]}</span><span class="qn q3">${n[2]}</span><span class="qn q4">${n[3]}</span><i class="qc"></i><i class="qr r1"></i><i class="qr r2"></i><i class="qr r3"></i></div><div class="cx-t">四域共鳴</div><div class="cx-s">QUADRUPLE ✦ RESONANCE</div>`;tbroot.appendChild(d);flashFx();shakeFx();sfx('boss_ult',.9);setTimeout(()=>{sfx('domain',.8);flashFx();shakeFx()},1100/SPEED);await sleep(3200);d.classList.add('out');await sleep(400);d.remove()}
 async function domainTick(){
   for(const id of Object.keys(B.doms)){const d=B.doms[id];if(!d)continue;d.turns--;
     if(d.turns>0){
@@ -8170,7 +8827,7 @@ async function domainTick(){
 }
 async function endDomain(id){
   const d=B.doms[id];if(!d)return;const h=B.heroes.find(u=>u.id===id);delete B.doms[id];
-  if(!Object.keys(B.doms).length)B.rodIn=false;domTint();
+  if(!Object.keys(B.doms).length){B.rodIn=false;B.lilyIn=false}domTint();
   if(id==='yuria'){
     if(h&&alive(h)&&alive(foe())){log(`영역이 닫힌다 — <strong>${h.name}</strong>의 <strong>${h.H.domain.fxName}</strong>!`,'domain');await sleep(400);await heroUlt(h,true)}
     else log('혈야의 영지가 닫혔다.','sys');
@@ -8212,11 +8869,11 @@ async function foeFaint(){
   B._fainting=false;
 }
 async function finish(win){
-  if(B.over)return;B.actId=null;B.doms={};B.rodIn=false;tbroot.className='tbroot';
+  if(B.over)return;B.actId=null;B.doms={};B.rodIn=false;B.lilyIn=false;tbroot.className='tbroot';
   log(win?`<strong>승리!</strong> ${B.turn}턴 · 준 피해 <i>${B.dealt}</i>`:'<strong>패배…</strong>','win'.replace('win',win?'win':'lose'));
   render();end(win);$('turnTag').textContent='END';
 }
-function stop(){runId++;running=false;tbroot.className='tbroot';tbroot.querySelectorAll('.ultv,.banner,.coex').forEach(e=>e.remove());try{LightSlash.clear()}catch(e){}try{DarkBurst.clear();DarkStorm.clear()}catch(e){}}
+function stop(){runId++;running=false;tbroot.className='tbroot';tbroot.querySelectorAll('.ultv,.banner,.coex').forEach(e=>e.remove());try{LightSlash.clear()}catch(e){}try{DarkBurst.clear();DarkStorm.clear()}catch(e){}try{LightFist.clear();RedFist.clear()}catch(e){}}
 /* ===== 조작 ===== */
 $('bSpeed').onclick=()=>{SPEED=SPEED>=4?1:SPEED*2;localStorage.setItem('hm_tb_speed',SPEED);$('bSpeed').textContent='속도 ×'+SPEED};$('bSpeed').textContent='속도 ×'+SPEED;
 $('bFlee2').onclick=()=>document.getElementById('bFlee').click();
