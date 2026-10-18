@@ -1959,18 +1959,18 @@ html.nat,html.nat body{background:#000!important}
         <div class="lgfoot" id="lgFoot">저장 위치 확인 중…</div>
       </div>
     </section>
-
-    <!-- ===== 로비 ===== -->
+@media (prefers-reduced-motion: reduce) { #lobby .lobby-art { transition: none; } }
+</style>
     <section class="scr" id="lobby" hidden>
       <img class="lbg" src="img/lobby.webp" alt="">
       <div class="lspark" aria-hidden="true"><i style="left:58%;top:58%;--s:3.4cqw"></i><i style="left:40%;top:30%;--s:1.6cqw;--d:.4s"></i><i style="left:30%;top:72%;--s:2cqw;--d:.9s"></i><i style="left:72%;top:20%;--s:1.8cqw;--d:.2s"></i><i style="left:12%;top:24%;--s:2.4cqw;--d:.6s"></i><i style="left:88%;top:40%;--s:1.4cqw;--d:1.1s"></i></div>
 
       <div class="lmenu">
-        <button class="lmlbl" id="lMenu" aria-expanded="true" aria-controls="lMenuItems"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>MENU</button>
+        <button class="lmlbl lobby-art-button" id="lMenu" aria-expanded="true" aria-controls="lMenuItems" aria-label="메뉴" title="메뉴"><img class="lobby-art" src="img/lobby-ui/menu.png" alt="" draggable="false"></button>
         <div class="lmitems" id="lMenuItems">
-        <button class="lmb" data-soon="가이드"><span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l4 4v12H6Z"/><path d="M15 4v4h4M9 12h6M9 16h6"/></svg></span><span class="llbl">가이드</span></button>
-        <button class="lmb" data-soon="상점"><span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.2-4H5.2Z"/><path d="M5 9v11h14V9"/><path d="M9 13h6"/></svg></span><span class="llbl">상점</span></button>
-        <button class="lmb" data-soon="출석"><span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/></svg></span><span class="llbl">출석</span></button>
+        <button class="lmb lobby-art-button" data-soon="가이드" aria-label="가이드" title="가이드"><img class="lobby-art" src="img/lobby-ui/guide.png" alt="" draggable="false"></button>
+        <button class="lmb lobby-art-button" data-soon="상점" aria-label="상점" title="상점"><img class="lobby-art" src="img/lobby-ui/shop.png" alt="" draggable="false"></button>
+        <button class="lmb lobby-art-button" data-soon="출석" aria-label="출석" title="출석"><img class="lobby-art" src="img/lobby-ui/attendance.png" alt="" draggable="false"></button>
         </div>
       </div>
 
@@ -1990,11 +1990,11 @@ html.nat,html.nat body{background:#000!important}
       <button class="levent" data-g="0" aria-label="로스바이세 픽업"><img src="img/face.webp" alt=""><span class="lev-t"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>6일</span></button>
 
       <div class="ldock">
-        <button class="ld" id="lGacha"><span class="ldc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l2.2 5.3 5.8.5-4.4 3.8 1.3 5.7L12 14.8l-4.9 3 1.3-5.7L4 8.3l5.8-.5Z"/><path d="M5 20h14" opacity=".6"/></svg><b class="dot"></b></span><span class="llbl">소환</span></button>
-        <button class="ld" id="lBag"><span class="ldc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v12H4Z"/><path d="M9 8V5h6v3M4 13h16"/></svg></span><span class="llbl">소지품</span></button>
-        <button class="ld" id="lChar"><span class="ldc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C8 3 6 7 6 10c0 2 1 3 2 4l-4 6h16l-4-6c1-1 2-2 2-4 0-3-2-7-6-7Z"/><path d="M9.5 12h5" opacity=".7"/></svg></span><span class="llbl">캐릭터</span></button>
-        <button class="ld go" id="lBattle"><span class="ldc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h9v18H5Z"/><path d="M14 3h5v18h-5M10 12h.5" /><path d="M14 7v10" opacity=".6"/></svg></span><span class="llbl">전투 개시</span></button>
-        <button class="ld dungeon" id="lDungeon"><span class="ldc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-7h6v7"/><path d="M12 3v3M4 9h16" opacity=".6"/></svg><i class="gem"></i></span><span class="llbl">아티팩트 던전</span></button>
+        <button class="ld lobby-art-button" id="lGacha" aria-label="가챠" title="가챠"><img class="lobby-art" src="img/lobby-ui/gacha.png" alt="" draggable="false"><b class="dot" aria-hidden="true"></b></button>
+        <button class="ld lobby-art-button" id="lBag" aria-label="소지품" title="소지품"><img class="lobby-art" src="img/lobby-ui/items.png" alt="" draggable="false"></button>
+        <button class="ld lobby-art-button" id="lChar" aria-label="마법사" title="마법사"><img class="lobby-art" src="img/lobby-ui/witch.png" alt="" draggable="false"></button>
+        <button class="ld go lobby-art-button" id="lBattle" aria-label="출근하기" title="출근하기"><img class="lobby-art" src="img/lobby-ui/work.png" alt="" draggable="false"></button>
+        <button class="ld dungeon lobby-art-button" id="lDungeon" aria-label="시나리오팩" title="시나리오팩"><img class="lobby-art" src="img/lobby-ui/scenario.png" alt="" draggable="false"></button>
       </div>
 
     </section>
@@ -2295,7 +2295,6 @@ html.nat,html.nat body{background:#000!important}
         <div class="partis" id="pArtis"></div>
       </div>
       <div class="pbottom">
-        <button class="ib dark" data-soon="편성 메뉴" aria-label="메뉴"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <div class="ptabs" id="pTabs"><b class="on">1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b></div>
         <button class="ib dark" id="pReset" aria-label="초기화"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></button>
         <button class="pillb" id="pOrder">순서 변경</button>
