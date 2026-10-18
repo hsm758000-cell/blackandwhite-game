@@ -8498,7 +8498,7 @@ button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;
 .coex.split .cglow polyline{fill:none;stroke:#cfeaff;stroke-width:70px;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
 @keyframes in2{to{opacity:.95}}
 .coex.split .cracks{position:absolute;inset:0;width:100%;height:100%;z-index:3;overflow:visible}
-.coex.split .ck{fill:none;stroke:#fff;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;stroke-dasharray:400;stroke-dashoffset:400;animation:ckDraw .45s .25s cubic-bezier(.2,.8,.3,1) forwards}
+.coex.split .ck{fill:none;stroke:#fff;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;stroke-dasharray:var(--L) 99999;stroke-dashoffset:var(--L);animation:ckDraw .45s .25s cubic-bezier(.2,.8,.3,1) forwards}
 .coex.split .ck.b{stroke:#9fd6ff;stroke-width:38px;opacity:.35}
 .coex.split .ck.m{stroke:#eaf6ff;stroke-width:22px;opacity:.75}
 .coex.split .ck.c{stroke:#fff;stroke-width:11px}
@@ -8866,7 +8866,8 @@ async function showSplit(ids){
     const istyle=`width:${iw.toFixed(0)}px;height:${ih.toFixed(0)}px;left:${il.toFixed(0)}px;top:${it.toFixed(0)}px${fl?';transform:scaleX(-1)':''}`;
     return `<div class="wedge" style="--clip:polygon(${Array.from({length:poly.length/2},(_,k)=>poly[2*k]+'% '+poly[2*k+1]+'%').join(',')});--c0:${st.c0};--c1:${st.c1};--c2:${st.c2};--glow:${st.glow};--cx:${cx.toFixed(1)}%;--cy:${cy.toFixed(1)}%;--iy:${Math.max(-6,Math.min(30,cy-46)).toFixed(1)}%;--d:${i*.12}s"><i class="wbg"></i><i class="wfx"></i>${img?`<img src="${img}" alt="" style="${istyle}">`:''}<span class="wn" style="left:${cx.toFixed(1)}%;top:${(cy/100*SH+fs*.62).toFixed(0)}px">${DOM_NAMES[id]||''}</span></div>`}).join('');
   const lines=sp.ends.map(e=>[jag(sp.c,e,10,3.2),jag(sp.c,e,14,2.2)]);
-  const glow=lines.map(([a])=>`<polyline points="${a}"/>`).join(''),core=lines.map(([a,b])=>`<polyline class="ck b" points="${a}"/><polyline class="ck m" points="${a}"/><polyline class="ck c" points="${a}"/><polyline class="ck t" points="${b}"/>`).join('');
+  const glow=lines.map(([a])=>`<polyline points="${a}"/>`).join(''),plen=pts=>{const q=pts.split(' ').map(v=>v.split(',').map(Number));let L=0;for(let k=1;k<q.length;k++)L+=Math.hypot((q[k][0]-q[k-1][0])*SW/100,(q[k][1]-q[k-1][1])*SH/100);return Math.ceil(L*1.15+20)},
+    core=lines.map(([a,b])=>{const la=plen(a),lb=plen(b);return `<polyline class="ck b" style="--L:${la}" points="${a}"/><polyline class="ck m" style="--L:${la}" points="${a}"/><polyline class="ck c" style="--L:${la}" points="${a}"/><polyline class="ck t" style="--L:${lb}" points="${b}"/>`}).join('');
   d.innerHTML=`${wedges}<svg class="cglow" viewBox="0 0 100 100" preserveAspectRatio="none">${glow}</svg><svg class="cracks" viewBox="0 0 100 100" preserveAspectRatio="none">${core}</svg><i class="core"></i><i class="wflash"></i><div class="cx-t">${lvl[0]}</div><div class="cx-s">${lvl[1]}</div>`;
   tbroot.appendChild(d);flashFx();shakeFx();if(n>=3)sfx('boss_ult',.8);
   setTimeout(()=>{sfx('domain',.8);shakeFx();d.classList.add('hit')},(n>=4?1100:800)/SPEED);
