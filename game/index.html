@@ -8491,6 +8491,8 @@ button.flee{width:2.8cqw;height:2.8cqw;min-width:26px;min-height:26px;padding:0;
 .coex.split .wedge .wfx{position:absolute;inset:0;background:radial-gradient(circle at var(--cx) var(--cy),var(--glow) 0,#0000 38%);opacity:.28}
 .coex.split .wedge img{position:absolute;max-width:none;object-fit:fill;animation:wImg .7s var(--d) cubic-bezier(.2,.8,.3,1) both}
 @keyframes wImg{from{opacity:0}to{opacity:1}}
+.coex.split .wedge img.fade{-webkit-mask-image:linear-gradient(90deg,#0000,#000 14%,#000 86%,#0000),linear-gradient(180deg,#0000,#000 12%,#000 88%,#0000);-webkit-mask-composite:source-in;mask-image:linear-gradient(90deg,#0000,#000 14%,#000 86%,#0000),linear-gradient(180deg,#0000,#000 12%,#000 88%,#0000);mask-composite:intersect}
+.coex.split .wedge .wtint{position:absolute;inset:0;background:radial-gradient(ellipse at var(--cx) var(--cy),#0000 30%,color-mix(in srgb,var(--c0) 70%,transparent) 100%),linear-gradient(0deg,color-mix(in srgb,var(--glow) 18%,transparent),#0000 40%);pointer-events:none}
 .coex.split .wedge .wn{will-change:opacity;position:absolute;left:var(--cx);z-index:2;transform:translateX(-50%);font-family:"Jua",sans-serif;font-size:clamp(12px,1.9cqw,22px);color:var(--c2);text-shadow:0 0 10px var(--glow),0 2px 0 #000;white-space:nowrap;background:#00000080;border:1px solid var(--glow);border-radius:999px;padding:.1cqw 1cqw;animation:cxIn .6s calc(var(--d) + .3s) cubic-bezier(.2,.8,.3,1) backwards}
 .coex.split .cracks{position:absolute;inset:0;width:100%;height:100%;z-index:3;overflow:visible}
 /* 균열: 블러 번짐(정지 레이어, 투명도만 애니메이션) + 굵은 빛 띠 + 흰 심 */
@@ -8852,6 +8854,8 @@ const SPLITS={
   2:{c:[50,50],ends:[[58,0],[42,100]],w:[[0,0,58,0,42,100,0,100],[58,0,100,0,100,100,42,100]],flip:[0,1]},
   3:{c:[50,52],ends:[[0,14],[100,14],[50,100]],w:[[0,0,100,0,100,14,50,52,0,14],[0,14,50,52,50,100,0,100],[100,14,50,52,50,100,100,100]],flip:[0,0,1]},
   4:{c:[50,50],ends:[[0,32],[62,0],[100,68],[38,100]],w:[[0,0,62,0,50,50,0,32],[62,0,100,0,100,68,50,50],[100,68,100,100,38,100,50,50],[38,100,0,100,0,32,50,50]],flip:[0,1,1,0]}};
+/* 영역 공존 전용 일러스트: [파일, 얼굴 중심 x, y, 얼굴 높이(이미지 높이 비율), 가로/세로 비] */
+const DOM_ART={rod:['img/dom_rod.webp',.446,.227,.13,942/888],yuria:['img/dom_yuria.webp',.53,.71,.43,480/580],one:['img/dom_one.webp',.538,.246,.10,1],lily:['img/dom_lily.webp',.50,.265,.07,1]};
 const FACE_AT={rod:[.533,.265,.10,1024/1536],yuria:[.559,.11,.10,900/1350],one:[.70,.15,.12,639/1600],lily:[.465,.08,.085,737/2002]};
 function centroid(a){let x=0,y=0,A=0;const n=a.length/2;for(let i=0;i<n;i++){const x0=a[2*i],y0=a[2*i+1],x1=a[(2*i+2)%a.length],y1=a[(2*i+3)%a.length],c=x0*y1-x1*y0;A+=c;x+=(x0+x1)*c;y+=(y0+y1)*c}A*=.5;return[x/(6*A),y/(6*A)]}
 function jag(a,b,seg=9,amp=2.6){const pts=[a];for(let i=1;i<seg;i++){const t=i/seg,x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=-(b[1]-a[1]),ny=b[0]-a[0],L=Math.hypot(nx,ny)||1,k=(Math.random()-.5)*amp*(1-Math.abs(t-.5)*.6);pts.push([x+nx/L*k,y+ny/L*k])}pts.push(b);return pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}
@@ -8862,9 +8866,15 @@ async function showSplit(ids){
   const wedges=ids.slice(0,n).map((id,i)=>{const st=DOM_STYLE[id]||DOM_STYLE.rod,poly=sp.w[i];let [cx,cy]=centroid(poly);const H=(B.heroes.find(u=>u.id===id)||{}).H||{},img=H.img||'';
     /* 얼굴이 조각 중심에 오도록: 중앙 문구와 겹치지 않게 중심에서 바깥쪽으로 조금 밀어냄 */
     const ox=cx-sp.c[0],oy=cy-sp.c[1],ol=Math.hypot(ox,oy)||1;cx=Math.max(14,Math.min(86,cx+ox/ol*6));cy=Math.max(24,Math.min(76,cy+oy/ol*6));
-    const fa=FACE_AT[id]||[.5,.15,.12,.6],fl=!!sp.flip[i],ih=fs/fa[2],iw=ih*fa[3],il=cx/100*SW-(fl?1-fa[0]:fa[0])*iw,it=cy/100*SH-fa[1]*ih;
+    const DA=DOM_ART[id],src=DA?DA[0]:img,fa=DA?DA.slice(1):(FACE_AT[id]||[.5,.15,.12,.6]),fl=!!sp.flip[i];
+    const xs=poly.filter((_,k)=>k%2===0).map(v=>v/100*SW),ys=poly.filter((_,k)=>k%2===1).map(v=>v/100*SH),bx0=Math.min(...xs),bx1=Math.max(...xs),by0=Math.min(...ys),by1=Math.max(...ys);
+    /* 얼굴 크기 목표를 맞추되, 그림이 조각 전체를 덮도록 최소 크기 보장 → 얼굴을 조각 중심에 두고 가장자리가 비지 않게 위치 보정 */
+    const ft=(DA?fs*.78:fs)/fa[2],cov=Math.max(by1-by0+2,(bx1-bx0+2)/fa[3]),ih=DA?Math.max(ft,Math.min(cov,ft*1.35)):ft,iw=ih*fa[3],fxp=fl?1-fa[0]:fa[0];
+    let il=cx/100*SW-fxp*iw,it=cy/100*SH-fa[1]*ih;
+    if(DA){if(iw>=bx1-bx0)il=Math.min(bx0,Math.max(bx1-iw,il));if(ih>=by1-by0)it=Math.min(by0,Math.max(by1-ih,it))}
+    const cover=!DA||(il<=bx0+1&&il+iw>=bx1-1&&it<=by0+1&&it+ih>=by1-1);
     const istyle=`width:${iw.toFixed(0)}px;height:${ih.toFixed(0)}px;left:${il.toFixed(0)}px;top:${it.toFixed(0)}px${fl?';transform:scaleX(-1)':''}`;
-    return `<div class="wedge" style="--clip:polygon(${Array.from({length:poly.length/2},(_,k)=>poly[2*k]+'% '+poly[2*k+1]+'%').join(',')});--c0:${st.c0};--c1:${st.c1};--c2:${st.c2};--glow:${st.glow};--cx:${cx.toFixed(1)}%;--cy:${cy.toFixed(1)}%;--iy:${Math.max(-6,Math.min(30,cy-46)).toFixed(1)}%;--d:${i*.12}s"><i class="wbg"></i><i class="wfx"></i>${img?`<img src="${img}" alt="" style="${istyle}">`:''}<span class="wn" style="left:${cx.toFixed(1)}%;top:${(cy/100*SH+fs*.62).toFixed(0)}px">${DOM_NAMES[id]||''}</span></div>`}).join('');
+    return `<div class="wedge" style="--clip:polygon(${Array.from({length:poly.length/2},(_,k)=>poly[2*k]+'% '+poly[2*k+1]+'%').join(',')});--c0:${st.c0};--c1:${st.c1};--c2:${st.c2};--glow:${st.glow};--cx:${cx.toFixed(1)}%;--cy:${cy.toFixed(1)}%;--iy:${Math.max(-6,Math.min(30,cy-46)).toFixed(1)}%;--d:${i*.12}s"><i class="wbg"></i><i class="wfx"></i>${src?`<img${cover?'':' class="fade"'} src="${src}" alt="" style="${istyle}">`:''}<i class="wtint"></i><span class="wn" style="left:${cx.toFixed(1)}%;top:${Math.min(SH-34,by1-(sp.c[1]/100*SH>by1-4?SH*.22:34),DA?it+(fa[1]+fa[2]*.55)*ih+6:cy/100*SH+fs*.62).toFixed(0)}px">${DOM_NAMES[id]||''}</span></div>`}).join('');
   const lines=sp.ends.map(e=>[jag(sp.c,e,10,3.2),jag(sp.c,e,14,2.2)]);
   const glow=lines.map(([a])=>`<polyline points="${a}"/>`).join(''),plen=pts=>{const q=pts.split(' ').map(v=>v.split(',').map(Number));let L=0;for(let k=1;k<q.length;k++)L+=Math.hypot((q[k][0]-q[k-1][0])*SW/100,(q[k][1]-q[k-1][1])*SH/100);return Math.ceil(L*1.15+20)},
     core=lines.map(([a,b])=>{const la=plen(a),lb=plen(b);return `<polyline class="ck b" style="--L:${la}" points="${a}"/><polyline class="ck m" style="--L:${la}" points="${a}"/><polyline class="ck c" style="--L:${la}" points="${a}"/><polyline class="ck t" style="--L:${lb}" points="${b}"/>`}).join('');
