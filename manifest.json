@@ -1,9 +1,10 @@
 {
-"ver": 43,
+"ver": 44,
 "files": {
 "game/index.html": "4a1906d203018ad7187b93788f9707a6d40394cf",
 "game/yuria_ult.mp4": "aeae775a3c2b6cae3b6e7fa58d9d9b69ceedc1f9",
 "game/lily_ult.mp4": "71a2bee6a7db5f053526264f538eaec0b09479a3",
+"game/one_ult.mp4": "9277cd8afe2913fa2d63a20c5c609b41acdee45c",
 "game/ult.mp4": "8c4d294ddc2f9e50c1b7c3d856361a4a1bf78839",
 "game/bgm/lobby.mp3": "baf0af96eef08e9379cfca882db0663a15e761f5",
 "game/bgm/main.mp3": "903e4535f2db71b39537c60873759ed79106c9dd",
