@@ -8704,7 +8704,9 @@ function vfxSkill(id,onHit){const S=window.SkillVFX&&SkillVFX[id];if(!S){onHit({
 function playUltVideo(src){return new Promise(res=>{const o=document.createElement('div');o.className='ultv'+(/one_ult/.test(src)?' fit':'')+(/lily_ult/.test(src)?' noskip':'');o.innerHTML='<video playsinline preload="auto"></video><button class="skip" type="button">건너뛰기 ▸</button>';const v=o.querySelector('video');let done=false;
   const finish=ok=>{if(done)return;done=true;o.classList.add('out');v.pause();setTimeout(()=>o.remove(),300);res(ok)};
   v.addEventListener('ended',()=>finish(true));v.addEventListener('error',()=>finish(false));o.querySelector('.skip').onclick=e=>{e.stopPropagation();finish(true)};o.onclick=()=>finish(true);
-  tbroot.appendChild(o);v.src=src;v.volume=AUD.vol?AUD.vol('sfx'):1;v.playbackRate=Math.min(4,SPEED);const p=v.play();if(p&&p.catch)p.catch(()=>{v.muted=true;v.play().catch(()=>finish(false))});setTimeout(()=>finish(true),9500/SPEED)})}
+  tbroot.appendChild(o);v.src=src;v.volume=AUD.vol?AUD.vol('sfx'):1;v.playbackRate=Math.min(4,SPEED);const p=v.play();if(p&&p.catch)p.catch(()=>{v.muted=true;v.play().catch(()=>finish(false))});
+  /* 안전 타이머: 영상 길이 + 여유 (길이를 모르면 20초) — 긴 영상이 중간에 끊기지 않게 */
+  let safe=setTimeout(()=>finish(true),20000/SPEED);v.addEventListener('loadedmetadata',()=>{if(isFinite(v.duration)&&v.duration>0){clearTimeout(safe);safe=setTimeout(()=>finish(true),(v.duration*1000+2500)/v.playbackRate)}})})}
 function ringFx(){const d=document.createElement('div');d.className='ring';stageEl.appendChild(d);setTimeout(()=>d.remove(),700)}
 function hitFx(id){const e=$(id);if(!e)return;e.classList.remove('hit');void e.offsetWidth;e.classList.add('hit')}
 async function banner(kan,kor,eng,cls='',img=null,ms=2200){const b=document.createElement('div');b.className='banner '+cls;b.innerHTML=`<div class="box">${img?`<img src="${img}" alt="">`:''}<div class="kan">${kan}</div><div class="kor">${kor}</div><div class="eng">${eng}</div></div>`;tbroot.appendChild(b);await sleep(ms);b.remove()}
