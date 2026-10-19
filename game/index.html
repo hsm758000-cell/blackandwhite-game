@@ -8264,11 +8264,28 @@ function runFinish(win,quit){
   function tryApplyUpd(){const v=window.__updReady;if(!v)return;const lobby=$('lobby')&&!$('lobby').hidden,busy=($('battle')&&!$('battle').hidden)||($('gacha')&&!$('gacha').hidden);
     if(lobby&&!busy){toast('업데이트 v'+v+' 적용 중…');try{if(window.ACC&&ACC.save)ACC.save()}catch(e){}setTimeout(()=>location.reload(),900)}else toast('업데이트 v'+v+' 준비 완료 — 로비로 돌아가면 적용됩니다')}
   {const _s2=show;show=function(id){_s2(id);if(id==='lobby'&&window.__updReady)setTimeout(tryApplyUpd,400)}}
-  let updN=0;window.__updateState=(st,a,b)=>{const onLoad=!$('loading').hidden;
-    if(st==='downloading')toast('새 버전 v'+a+' 다운로드 중…');
-    else if(st==='progress'){if(a===b||a-updN>=5){updN=a;toast('업데이트 다운로드 '+a+'/'+b)}}
-    else if(st==='ready'){if(onLoad)setTimeout(()=>location.reload(),300);else{window.__updReady=a;tryApplyUpd()}}
-    else if(st==='error'){/* 조용히 무시 (오프라인 등) */}};
+  /* 업데이트 진행 표시줄 (화면 상단 고정) */
+  const updBar=(()=>{const d=document.createElement('div');d.id='updBar';d.style.cssText='position:fixed;left:50%;top:max(10px,env(safe-area-inset-top));transform:translateX(-50%);z-index:9999;display:none;align-items:center;gap:10px;padding:7px 14px;border-radius:999px;background:#14111ce8;border:1px solid #c9b6ff70;color:#fff;font:600 13px/1.2 "Jua",sans-serif;box-shadow:0 4px 16px #000a;pointer-events:none;white-space:nowrap';
+    d.innerHTML='<span class="t"></span><span style="width:90px;height:5px;border-radius:3px;background:#ffffff25;overflow:hidden"><i style="display:block;height:100%;width:0;background:linear-gradient(90deg,#c9b6ff,#ffe39a);transition:width .25s"></i></span>';document.body.appendChild(d);
+    return{show(t,p){d.style.display='flex';d.querySelector('.t').textContent=t;d.querySelector('i').style.width=(p==null?0:Math.round(p*100))+'%';d.lastChild.style.display=p==null?'none':''},hide(){d.style.display='none'}}})();
+  const ldMsg=t=>{const st=$('ldStep');if(st&&!$('loading').hidden)st.dataset.upd=t;let e=document.getElementById('ldUpd');if(!e&&$('loading')){e=document.createElement('div');e.id='ldUpd';e.style.cssText='position:absolute;left:50%;bottom:4.5cqw;transform:translateX(-50%);z-index:5;font:600 clamp(10px,1.2cqw,14px)/1.3 "Jua",sans-serif;color:#ffe39a;text-shadow:0 1px 3px #000;white-space:nowrap';$('loading').appendChild(e)}if(e)e.textContent=t};
+  let updN=0,updHeldTap=false;window.__updateState=(st,a,b)=>{const onLoad=!$('loading').hidden,tap=$('ldTap');
+    if(st==='checking'){if(onLoad)ldMsg('최신 버전 확인 중… (현재 v'+a+')')}
+    else if(st==='latest'){updBar.hide();if(onLoad)ldMsg('최신 버전입니다 · v'+a);if(b)toast('이미 최신 버전입니다 (v'+a+')')}
+    else if(st==='downloading'){updN=0;if(onLoad){ldMsg('새 버전 v'+a+' 다운로드 중…');if(tap&&!tap.hidden){tap.hidden=true;updHeldTap=true}}updBar.show('새 버전 v'+a+' 다운로드 중',0)}
+    else if(st==='progress'){updBar.show('업데이트 '+a+'/'+b,b?a/b:0);if(onLoad)ldMsg('업데이트 다운로드 '+a+'/'+b)}
+    else if(st==='ready'){updBar.show('업데이트 v'+a+' 완료 — 적용 중',1);if(onLoad){ldMsg('업데이트 v'+a+' 적용 중…');setTimeout(()=>location.reload(),400)}else{window.__updReady=a;tryApplyUpd()}}
+    else if(st==='error'){updBar.hide();if(onLoad)ldMsg('업데이트 확인 실패 · 현재 버전(v'+a+')으로 시작합니다');if(updHeldTap&&tap){tap.hidden=false;updHeldTap=false}
+      if(b||!onLoad)toast('업데이트를 받지 못했습니다 — 네트워크 확인 후 설정 › 업데이트 확인')}};
+  /* 로딩이 끝나 TAP 버튼이 뜨는 시점에 다운로드 중이면 버튼을 잠시 숨김 (완료되면 자동 재시작) */
+  {const tap=$('ldTap');if(tap)new MutationObserver(()=>{if(!tap.hidden&&document.getElementById('updBar').style.display==='flex'&&!window.__updReady){tap.hidden=true;updHeldTap=true}}).observe(tap,{attributes:true,attributeFilter:['hidden']})}
+  /* 설정창: 앱/콘텐츠 버전 + 업데이트 확인 버튼 */
+  {const box=document.querySelector('#setModal .setbox');if(box){const d=document.createElement('div');d.className='setsec';d.style.marginTop='1cqw';
+    let av='';try{av=Native.appVer?Native.appVer():''}catch(e){}
+    d.innerHTML=`<span class="setlbl">업데이트</span><div class="setrow" style="grid-template-columns:1fr auto"><span id="setVer">앱 ${av||'-'} · 콘텐츠 v${N.contentVer()}</span><button class="pillb" id="setUpd">업데이트 확인</button></div>`;box.insertBefore(d,box.querySelector('.setnote'));
+    $('setUpd').onclick=()=>{toast('최신 버전을 확인하는 중…');try{Native.checkUpdate()}catch(e){}}}}
+  /* 앱을 켜 둔 채 오래 있으면 10분마다 확인 (로비에 있을 때만) */
+  setInterval(()=>{try{if($('lobby')&&!$('lobby').hidden&&Native.checkUpdateQuiet)Native.checkUpdateQuiet()}catch(e){}},600000);
   try{const v=N.contentVer();const n=document.querySelector('#setModal .setnote');if(n&&v)n.textContent+=' · 콘텐츠 v'+v;const f=document.querySelector('#loading .ldstep');if(f&&v){const b=document.createElement('div');b.style.cssText='position:absolute;right:1.2cqw;bottom:.6cqw;font-size:clamp(8px,.9cqw,10px);color:#ffffff70';b.textContent='v'+v;f.parentElement.appendChild(b)}}catch(e){}
   // 설정 연동
   document.addEventListener('change',e=>{if(e.target&&e.target.id==='setLite')N.lite(!!e.target.checked);if(e.target&&e.target.id==='setFps')N.fps(!!e.target.checked)});
