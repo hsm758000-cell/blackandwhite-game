@@ -6216,6 +6216,775 @@ window.SkillVFX[DEF.id] = { def: DEF, play: (canvas, opts) => VFX.play(DEF, canv
   global.RedFist = { spawn, update, draw, shake, timeScale, clear, active, DURATION: DUR, HIT_TIME: HIT };
 })(typeof window !== 'undefined' ? window : globalThis);
 
+/*!
+ * TwinBladeVFX — 빛의 검 · 어둠의 검 2연격 (After Effects TwinBlade_v02 이식판)
+ * 의존성 없음. Canvas 2D.
+ *
+ *   await TwinBladeVFX.load('./textures/');
+ *   const fx = TwinBladeVFX.spawn(x, y, {
+ *     size: 1,                 // 1 = AE 1920x1080 기준 크기 (검격 길이 약 900px)
+ *     onFirstHit: () => {},    // 1타(빛) 명중   ≈ 0.16초
+ *     onCross:    () => {},    // 2타 교차 폭발   ≈ 0.34초
+ *     onEnd:      () => {}
+ *   });
+ *   // 게임 루프
+ *   TwinBladeVFX.updateAll(dt);
+ *   const [sx, sy] = TwinBladeVFX.shake();   // 카메라 흔들림 오프셋(px)
+ *   ctx.save(); ctx.translate(sx, sy); ...장면... ; TwinBladeVFX.drawAll(ctx); ctx.restore();
+ *
+ *   // 7연격 (로스바이세)
+ *   TwinBladeVFX.combo(x, y, { count: 7, size: 0.6, onHit: (n, isFinal) => {}, onFinish: (hits) => {} });
+ *   //   storm: false → 참격 폭풍 끄기 · dim: 0~1 → 콤보 중 화면 어둡게 (기본 0.38)
+ *   // 쌍검 일섬 (게임 일섬과 같은 구조, 빛·어둠 X자 마무리) — 텍스처 불필요
+ *   TwinBladeVFX.issen(x, y, { scale: Math.min(W,H)/700*.85, onFirstHit(){}, onCross(){}, onEnd(){} });
+ *   // 7연격 쌍검 일섬 (권장 — 1~6타 경량, 7타 풀 연출)
+ *   TwinBladeVFX.issenCombo(x, y, { count: 7, scale: 1, onHit: (n, isFinal) => {}, onFinish: (hits) => {} });
+ *   //   chroma: true → 색수차 켜기(무거움) · window.LITE = true → 모바일 전부 경량
+ *
+ *   // 색상 — 기본은 금빛·보라. 모든 함수의 colors 옵션에 프리셋 이름이나 객체를 넣을 수 있음
+ *   TwinBladeVFX.issen(x, y, { colors: 'ice' });
+ *   TwinBladeVFX.setDefaultColors('crimson');            // 전역 기본 색 변경
+ *   TwinBladeVFX.setDefaultColors({ light:'#ffd36b', rim:'#7a3cff', core:'#04020c' });
+ *   //   프리셋: goldViolet(기본) · ice · white · crimson · jade · azure  (TwinBladeVFX.PRESETS)
+ *   // 칼선만 따로
+ *   TwinBladeVFX.slashStorm(x, y, { count: 20, size: 0.6, duration: 0.2 });
+ */
+(function (root) {
+  'use strict';
+
+  var FILES = {
+    lightCore: 'tb_slash_core.png', lightGlow: 'tb_slash_glow.png',
+    darkCore: 'tb_slash_dark_core.png', darkRim: 'tb_slash_dark_rim.png',
+    cross: 'tb_cross_burst.png', spark: 'tb_spark_flare.png', ring: 'tb_impact_ring.png',
+    sparks: 'tb_light_sparks.png', shards: 'tb_dark_shards.png', smoke: 'tb_dark_smoke.png'
+  };
+  // [색 키, 블룸 굽기]
+  var TINT = {
+    lightCore: ['lightCore', 1], lightGlow: ['light', 0], darkCore: ['core', 0], darkRim: ['rimLight', 1],
+    cross: [null, 1], spark: [null, 0], ring: ['ring', 1], sparks: ['sparkle', 1],
+    shards: ['shard', 0], smoke: ['smoke', 0]
+  };
+  // ---------- 색상 프리셋 ----------
+  //  light = 빛의 검(금빛 칼날) · rim = 어둠의 검 테두리 · core = 어둠의 검 심(아주 어두운 색)
+  //  기본값: 금빛 + 보라 (로스바이세). 다른 색은 colors: 'ice' 처럼 이름으로, 또는 {light,rim,core} 객체로 지정
+  var PRESETS = {
+    goldViolet: { light: '#ffc44d', rim: '#a666ff', core: '#050310' },   // 기본 — 금빛·보라
+    ice:        { light: '#8fe6ff', rim: '#ff3355', core: '#100206' },   // 얼음빛·핏빛
+    white:      { light: '#fff6e8', rim: '#9aa3b8', core: '#000000' },   // 백색·은회색
+    crimson:    { light: '#ff8a5c', rim: '#d0103a', core: '#0c0003' },   // 주홍·진홍
+    jade:       { light: '#9dffcf', rim: '#2fa37a', core: '#020c07' },   // 옥빛·청록
+    azure:      { light: '#cfe4ff', rim: '#3d6bff', core: '#02040f' }    // 하늘빛·청색
+  };
+  var DEFAULT_COLORS = PRESETS.goldViolet;
+
+  // 검격 텍스처 기하 (2048 단위 좌표계, 실제 파일은 1024x384로 축소 저장)
+  //  원 중심 (1024,1900) · 반지름 1750 · ±28° 호 → 거의 곧은 칼날. 꼬리 = 오른쪽, 날끝 = 왼쪽
+  var SLASH_W = 2048, SLASH_H = 768, ARC_C = [1024, 1900], ARC_HALF = 28;
+  var ANCHOR = [1024, 150];          // 호의 중점 = 교차점
+  var SLASH_SCALE = 0.85;            // AE 크기 대비 보정 (칼날이 더 길어진 만큼)
+  var X_ANGLE = 45;                  // 빛: 오른쪽 위→왼쪽 아래, 어둠: 왼쪽 위→오른쪽 아래
+  var END_TIME = 2.0;                 // 마지막 요소(연기)가 끝나는 시각 (+ impactDelay)
+
+  var src = null, tintCache = {};
+
+  // ---------- 유틸 ----------
+  function toRGB(c) {
+    if (Array.isArray(c)) return c.map(function (v) { return v <= 1 ? v * 255 : v; });
+    var h = c.replace('#', '');
+    if (h.length === 3) h = h.split('').map(function (x) { return x + x; }).join('');
+    return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)];
+  }
+  function mix(a, b, k) { return a.map(function (v, i) { return v + (b[i] - v) * k; }); }
+  var WHITE = [255, 255, 255];
+  function css(rgb) { return 'rgb(' + rgb.map(Math.round).join(',') + ')'; }
+  var EASE = {
+    io: function (u) { return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; },
+    out: function (u) { return 1 - Math.pow(1 - u, 3); },
+    lin: function (u) { return u; }
+  };
+  function track(keys, t, ease) {
+    ease = ease || EASE.io;
+    if (t <= keys[0][0]) return keys[0][1];
+    var last = keys[keys.length - 1];
+    if (t >= last[0]) return last[1];
+    for (var i = 1; i < keys.length; i++) {
+      if (t <= keys[i][0]) {
+        var a = keys[i - 1], b = keys[i], u = ease((t - a[0]) / (b[0] - a[0]));
+        return a[1] + (b[1] - a[1]) * u;
+      }
+    }
+    return last[1];
+  }
+
+  // ---------- 키프레임 (AE 값 그대로, 초 단위) ----------
+  var K = {
+    wipe:      [[0.1, 100], [0.3, 73]],                       // 방사형 지우기 완료율 (100=안보임)
+    lcOp:      [[0.55, 100], [1, 0]],
+    lcSc:      [[0.3, 68], [1, 72]],
+    lgOp:      [[0.1, 70], [0.55, 70], [1.2, 0]],
+    lgSc:      [[0.3, 68], [1.2, 73]],
+    dkOp:      [[0.6, 100], [1.15, 0]],
+    dkSc:      [[0.3, 68], [1.15, 72]],
+    crossSc:   [[0.26, 0], [0.3, 90], [0.5, 45], [0.75, 0]],
+    crossRot:  [[0.26, 0], [0.75, 20]],
+    sparkSc:   [[0.26, 0], [0.3, 120], [0.6, 0]],
+    ringSc:    [[0.27, 5], [0.75, 85]],
+    ringOp:    [[0.26, 0], [0.28, 100], [0.75, 0]],
+    spkSc:     [[0.27, 15], [1, 95]],
+    spkOp:     [[0.26, 0], [0.28, 100], [1, 0]],
+    spkRot:    [[0.27, 0], [1, 15]],
+    shdSc:     [[0.27, 15], [1.1, 110]],
+    shdOp:     [[0.26, 0], [0.28, 100], [1.1, 0]],
+    shdRot:    [[0.27, 0], [1.1, -25]],
+    smkSc:     [[0.28, 30], [2, 105]],
+    smkOp:     [[0.28, 0], [0.45, 85], [2, 0]],
+    smkRot:    [[0.28, 0], [2, -30]],
+    flashOp:   [[0.26, 0], [0.28, 7], [0.34, 0]]
+  };
+
+  // ---------- 로드 / 착색 ----------
+  function load(basePath, files) {
+    if (basePath == null) basePath = './textures/';
+    files = files || FILES;
+    var names = Object.keys(FILES);
+    return Promise.all(names.map(function (n) {
+      return new Promise(function (res, rej) {
+        var im = new Image();
+        im.onload = function () { res([n, im]); };
+        im.onerror = function () { rej(new Error('TwinBladeVFX: 텍스처 로드 실패 ' + basePath + files[n])); };
+        im.src = basePath + files[n];
+      });
+    })).then(function (pairs) {
+      src = {}; pairs.forEach(function (p) { src[p[0]] = p[1]; });
+      tintCache = {};
+    });
+  }
+  function makeCanvas(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  var canFilter = (function () {
+    try { var g = makeCanvas(1, 1).getContext('2d'); g.filter = 'blur(2px)'; return g.filter === 'blur(2px)'; }
+    catch (e) { return false; }
+  })();
+  function tinted(img, rgb, bloom) {
+    var w = img.width, h = img.height, c = makeCanvas(w, h), g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    if (rgb) { g.globalCompositeOperation = 'source-in'; g.fillStyle = css(rgb); g.fillRect(0, 0, w, h); }
+    if (!bloom || !canFilter) return c;
+    var out = makeCanvas(w, h), o = out.getContext('2d');
+    o.filter = 'blur(' + Math.max(2, Math.round(w * 0.012)) + 'px)';
+    o.globalAlpha = 0.7; o.drawImage(c, 0, 0);
+    o.filter = 'none'; o.globalAlpha = 1; o.globalCompositeOperation = 'lighter'; o.drawImage(c, 0, 0);
+    return out;
+  }
+  function normColors(c) {
+    if (typeof c === 'string') c = PRESETS[c] || DEFAULT_COLORS;
+    c = c || {};
+    return { light: c.light || DEFAULT_COLORS.light, rim: c.rim || DEFAULT_COLORS.rim, core: c.core || DEFAULT_COLORS.core };
+  }
+  function getSet(colors) {
+    var key = colors.light + '|' + colors.rim + '|' + colors.core;
+    if (tintCache[key]) return tintCache[key];
+    var pal = paletteFor(colors);
+    var set = {};
+    Object.keys(TINT).forEach(function (n) { var t = TINT[n]; set[n] = tinted(src[n], t[0] ? pal[t[0]] : null, t[1]); });
+    return (tintCache[key] = set);
+  }
+  function paletteFor(colors) {
+    var L = toRGB(colors.light), R = toRGB(colors.rim), C = toRGB(colors.core);
+    return {
+      light: L, lightCore: mix(L, WHITE, 0.45), rimLight: mix(R, WHITE, 0.15), core: C,
+      smoke: mix(C, R, 0.35), shard: mix(C, R, 0.25), sparkle: mix(L, WHITE, 0.4),
+      ring: mix(mix(L, R, 0.5), WHITE, 0.4)
+    };
+  }
+
+  // ---------- 인스턴스 ----------
+  var live = [];
+
+  function TwinBlade(x, y, opt) {
+    opt = opt || {};
+    this.x = x; this.y = y;
+    this.size = opt.size == null ? 1 : opt.size;
+    this.secondDelay = opt.secondDelay == null ? 0.13 : opt.secondDelay;   // 1타→2타 간격(초)
+    this.impactDelay = opt.impactDelay == null ? 0.07 : opt.impactDelay;   // 교차 폭발 지연(초)
+    this.shakeAmount = opt.shakeAmount == null ? 1 : opt.shakeAmount;
+    this.flash = opt.flash == null ? true : opt.flash;                       // 화면 섬광
+    this.alpha = opt.alpha == null ? 1 : opt.alpha;
+    this.rotation = opt.rotation || 0;                                       // 전체 회전(도)
+    this.mirror = !!opt.mirror;                                              // 좌우 반전 (빛/어둠 방향 교체)
+    this.speed = opt.speed == null ? 1 : opt.speed;                          // 재생 속도 배율
+    this.crossAngle = opt.crossAngle == null ? X_ANGLE : opt.crossAngle;    // X자 벌어짐 각도(도). 45 = 직각 교차
+    this.onFirstHit = opt.onFirstHit || null;
+    this.onCross = opt.onCross || null;
+    this.onEnd = opt.onEnd || null;
+    this.tex = getSet(normColors(opt.colors));
+    this.t = 0; this.dead = false; this.firedA = false; this.firedB = false;
+  }
+  TwinBlade.prototype.crossTime = function () { return 0.27 + this.impactDelay; };
+  TwinBlade.prototype.duration = function () { return Math.max(END_TIME + this.impactDelay, 1.15 + this.secondDelay); };
+
+  TwinBlade.prototype.update = function (dt) {
+    if (this.dead) return;
+    this.t += dt * this.speed;
+    if (!this.firedA && this.t >= 0.16) { this.firedA = true; if (this.onFirstHit) this.onFirstHit(this); }
+    if (!this.firedB && this.t >= this.crossTime()) { this.firedB = true; if (this.onCross) this.onCross(this); }
+    if (this.t >= this.duration()) { this.dead = true; if (this.onEnd) this.onEnd(this); }
+  };
+
+  // AE와 같은 두 번의 흔들림: 1타 약하게, 교차 때 강하게
+  TwinBlade.prototype.shake = function () {
+    var a = this.shakeAmount * this.size, out = [0, 0], t = this.t;
+    function hit(t0, A, f) {
+      var d = t - t0; if (d < 0) return;
+      var m = A * a * Math.exp(-d * f);
+      out[0] += Math.sin(d * 95) * m; out[1] += Math.cos(d * 78) * m * 0.7;
+    }
+    hit(0.16, 7, 14); hit(this.crossTime(), 22, 9);
+    return out;
+  };
+
+  TwinBlade.prototype.draw = function (ctx) {
+    if (this.dead) return;
+    var t = this.t, tex = this.tex, s = this.size, self = this;
+    var tD = t - this.secondDelay, tI = t - this.impactDelay;
+    var D2R = Math.PI / 180;
+
+    ctx.save();
+    if (this.rotation || this.mirror) {
+      ctx.translate(this.x, this.y);
+      if (this.rotation) ctx.rotate(this.rotation * D2R);
+      if (this.mirror) ctx.scale(-1, 1);
+      ctx.translate(-this.x, -this.y);
+    }
+
+    // 검격 하나: AE 변형 순서(위치 → 회전 → 스케일 → 앵커)를 그대로 재현 + 방사형 지우기
+    function slash(img, tt, opKeys, scKeys, mirror, rot, mode) {
+      var op = track(opKeys, tt) * (tt < 0.1 ? 0 : 1);
+      var p = (100 - track(K.wipe, tt, EASE.out)) / 27;  // 0 → 1 : 꼬리에서 날끝까지 그어진 정도
+      if (op <= 0.5 || p <= 0.001) return;
+      var sc = track(scKeys, tt) / 100 * s * SLASH_SCALE;
+      ctx.save();
+      ctx.globalCompositeOperation = mode;
+      ctx.globalAlpha = Math.min(1, op / 100) * self.alpha;
+      ctx.translate(self.x, self.y);
+      ctx.rotate(rot * D2R);
+      ctx.scale(mirror ? -sc : sc, sc);
+      ctx.translate(-ANCHOR[0], -ANCHOR[1]);
+      // 원 중심 기준 부채꼴로 잘라서, 꼬리(오른쪽)부터 날끝(왼쪽)으로 그어지게
+      var aEnd = (ARC_HALF - 90) * D2R, aStart = (ARC_HALF - 90 - 2 * ARC_HALF * Math.min(1, p) - 2) * D2R;
+      ctx.beginPath(); ctx.moveTo(ARC_C[0], ARC_C[1]); ctx.arc(ARC_C[0], ARC_C[1], 4000, aStart, aEnd); ctx.closePath(); ctx.clip();
+      ctx.drawImage(img, 0, 0, SLASH_W, SLASH_H);
+      ctx.restore();
+    }
+    // 중심 정렬 스프라이트 (texPx = AE에서의 원본 텍스처 크기)
+    function sprite(img, texPx, scPct, rotDeg, op, mode) {
+      if (op <= 0.5 || scPct <= 0.05) return;
+      var w = texPx * scPct / 100 * s;
+      ctx.save();
+      ctx.globalCompositeOperation = mode;
+      ctx.globalAlpha = Math.min(1, op / 100) * self.alpha;
+      ctx.translate(self.x, self.y);
+      if (rotDeg) ctx.rotate(rotDeg * D2R);
+      ctx.drawImage(img, -w / 2, -w / 2, w, w);
+      ctx.restore();
+    }
+
+    // 아래 → 위 (AE 레이어 순서)
+    sprite(tex.smoke, 1024, track(K.smkSc, tI), track(K.smkRot, tI), track(K.smkOp, tI), 'source-over');
+    sprite(tex.shards, 1024, track(K.shdSc, tI), track(K.shdRot, tI), track(K.shdOp, tI), 'source-over');
+    // 빛의 검: 칼날을 -45° → 오른쪽 위에서 왼쪽 아래로
+    // 어둠의 검: 좌우 반전 후 +45° → 왼쪽 위에서 오른쪽 아래로. 두 날이 중점에서 직각으로 교차 = X자
+    var xa = this.crossAngle;
+    slash(tex.lightGlow, t, K.lgOp, K.lgSc, false, -xa, 'lighter');
+    slash(tex.lightCore, t, K.lcOp, K.lcSc, false, -xa, 'lighter');
+    slash(tex.darkRim, tD, K.dkOp, K.dkSc, true, xa, 'lighter');
+    slash(tex.darkCore, tD, K.dkOp, K.dkSc, true, xa, 'source-over');
+    sprite(tex.ring, 1024, track(K.ringSc, tI), 0, track(K.ringOp, tI), 'lighter');
+    sprite(tex.sparks, 1024, track(K.spkSc, tI), track(K.spkRot, tI), track(K.spkOp, tI), 'lighter');
+    sprite(tex.cross, 1024, track(K.crossSc, tI), track(K.crossRot, tI), 100, 'lighter');
+    sprite(tex.spark, 512, track(K.sparkSc, tI), 0, 100, 'lighter');
+
+    if (this.flash) {
+      var f = track(K.flashOp, tI);
+      if (f > 0.1) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = f / 100 * self.alpha;
+        ctx.fillStyle = '#fff5e0';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      }
+    }
+    ctx.restore();
+  };
+
+
+  // ---------- 참격 폭풍 (가늘고 곧은 칼선 난무) ----------
+  // 텍스처 없이 벡터로 그림. 칼선 하나 = 순식간에 그어지는 렌즈형 칼날 + 잔상
+  var cuts = [], dimLevel = 0, dimTarget = 0, rngSeed = 1;
+  function rnd() { rngSeed = (rngSeed * 16807) % 2147483647; return (rngSeed - 1) / 2147483646; }
+  function slashStorm(x, y, opt) {
+    opt = opt || {};
+    var size = opt.size == null ? 1 : opt.size;
+    var n = opt.count || 14, dur = opt.duration == null ? 0.18 : opt.duration;
+    var radius = (opt.radius == null ? 0.32 : opt.radius) * 1920 * size;
+    var pal = paletteFor(normColors(opt.colors));
+    for (var i = 0; i < n; i++) {
+      var dark = opt.darkRatio == null ? rnd() < 0.45 : rnd() < opt.darkRatio;
+      var a = rnd() * Math.PI;                                    // 모든 방향
+      var off = Math.sqrt(rnd()) * radius, oa = rnd() * Math.PI * 2;
+      cuts.push({
+        x: x + Math.cos(oa) * off, y: y + Math.sin(oa) * off * 0.75,
+        a: a, len: (300 + rnd() * 620) * size * (opt.lengthScale || 1),
+        w: (14 + rnd() * 20) * size * (opt.widthScale || 1),          // 날 몸통 최대 두께(px)
+        bow: (0.05 + rnd() * 0.07) * (300 + rnd() * 620) * size, side: rnd() < 0.5 ? 1 : -1,
+        t: -(rnd() * dur) - (opt.delay || 0), dark: dark, pal: pal,
+        draw: 0.035 + rnd() * 0.025, hold: 0.04 + rnd() * 0.05, fade: 0.22 + rnd() * 0.18,
+        alpha: opt.alpha == null ? 1 : opt.alpha
+      });
+    }
+  }
+  // 칼날 하나의 윤곽: 메인 검격 텍스처와 같은 프로필
+  //   u = 0(꼬리) → 1(날끝), 두께 = u^1.35·(1-u)^0.35 (날끝 75% 지점이 가장 두꺼움)
+  //   바깥쪽 = 날(밝은 선), 안쪽으로 몸통이 붙음. 살짝 휜 호.
+  var SEG = 22;
+  function bladePath(ctx, c, p, wMul, edgeOnly) {
+    var ca = Math.cos(c.a), sa = Math.sin(c.a), nx = -sa * c.side, ny = ca * c.side;
+    var hx = ca * c.len / 2, hy = sa * c.len / 2, sx = c.x - hx, sy = c.y - hy;
+    var n = Math.max(2, Math.ceil(SEG * p)), top = [], bot = [];
+    for (var i = 0; i <= n; i++) {
+      var u = Math.min(p, i / SEG);
+      var bow = c.bow * 4 * u * (1 - u);                       // 호의 휨
+      var px = sx + ca * c.len * u - nx * bow, py = sy + sa * c.len * u - ny * bow;
+      var prof = Math.pow(u, 1.35) * Math.pow(1 - u, 0.35) / 0.42;
+      var w = (edgeOnly ? 0.22 : 1) * c.w * prof * wMul + 0.6;
+      top.push(px, py); bot.push(px + nx * w, py + ny * w);
+    }
+    ctx.beginPath(); ctx.moveTo(top[0], top[1]);
+    for (var j = 2; j < top.length; j += 2) ctx.lineTo(top[j], top[j + 1]);
+    for (var k = bot.length - 2; k >= 0; k -= 2) ctx.lineTo(bot[k], bot[k + 1]);
+    ctx.closePath(); ctx.fill();
+    return [top[top.length - 2], top[top.length - 1]];
+  }
+  function updateCuts(dt) {
+    for (var i = cuts.length - 1; i >= 0; i--) {
+      var c = cuts[i]; c.t += dt;
+      if (c.t > c.draw + c.hold + c.fade) cuts.splice(i, 1);
+    }
+    dimLevel += (dimTarget - dimLevel) * Math.min(1, dt * (dimTarget > dimLevel ? 10 : 3));
+  }
+  function drawCuts(ctx) {
+    if (dimLevel > 0.005) {
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = dimLevel;
+      ctx.fillStyle = '#05040a'; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
+    }
+    for (var i = 0; i < cuts.length; i++) {
+      var c = cuts[i]; if (c.t < 0) continue;
+      var p = Math.min(1, c.t / c.draw);
+      var life = c.t - c.draw - c.hold, k = life <= 0 ? 1 : Math.max(0, 1 - life / c.fade);
+      var shrink = 0.55 + 0.45 * k, A = k * c.alpha, tip;
+      ctx.save();
+      if (!c.dark) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.22 * A; ctx.fillStyle = css(c.pal.light); bladePath(ctx, c, p, 2.2 * shrink);      // 번짐
+        ctx.globalAlpha = 0.75 * A; ctx.fillStyle = css(c.pal.light); bladePath(ctx, c, p, 1.0 * shrink);      // 몸통
+        ctx.globalAlpha = 1.0 * A; ctx.fillStyle = css(c.pal.lightCore); tip = bladePath(ctx, c, p, shrink, true); // 날
+      } else {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.5 * A; ctx.fillStyle = css(c.pal.rimLight); bladePath(ctx, c, p, 1.45 * shrink);  // 보라 테두리
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.95 * A; ctx.fillStyle = css(c.pal.core); bladePath(ctx, c, p, 1.0 * shrink);      // 검은 몸통
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.9 * A; ctx.fillStyle = css(c.pal.rimLight); tip = bladePath(ctx, c, p, shrink, true); // 날
+      }
+      if (p < 1 && tip) {                                      // 그어지는 순간의 칼끝 광채 (진행 방향으로 길쭉하게)
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = c.alpha * .8;
+        ctx.save(); ctx.translate(tip[0], tip[1]); ctx.rotate(c.a); ctx.scale(1, .22);
+        var rg = ctx.createRadialGradient(0, 0, 0, 0, 0, 10 + c.w * .9);
+        rg.addColorStop(0, 'rgba(255,255,245,1)'); rg.addColorStop(1, 'rgba(255,255,245,0)');
+        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0, 10 + c.w * .9, 0, 7); ctx.fill(); ctx.restore();
+      }
+      ctx.restore();
+    }
+  }
+
+
+  // ---------- 쌍검 일섬 (게임 LightSlash 구조를 빛·어둠 쌍검으로) ----------
+  //  0.00~0.20 기 모으기 · 0.20 돌진 섬광 2줄(빛/어둠 교차) · 0.26~0.46 연속 베기(빛·어둠 번갈아)
+  //  0.48 빛의 일섬(onFirstHit) · 0.52 어둠의 일섬 X자 교차(onCross) · 화면 반전→플래시 · 2.0 종료
+  var ISSEN = [];
+  var I_DUR = 2.0, I_DASH = 0.20, I_FINAL = 0.48, I_GAP = 0.04;
+  function R(a, b) { return a + Math.random() * (b - a); }
+  function cl(x, a, b) { a = a == null ? 0 : a; b = b == null ? 1 : b; return Math.max(a, Math.min(b, x)); }
+  function eo(x) { return 1 - Math.pow(1 - cl(x), 3); }
+  function rgbStr(c) { return c.map(Math.round).join(','); }
+  // ---- 성능: 원형 광채는 색별로 한 번만 만든 스프라이트를 재사용 (매 프레임 그라데이션 생성 X) ----
+  var glowCache = {};
+  function glowSprite(rgb) {                                       // rgb = '255,200,90'
+    if (glowCache[rgb]) return glowCache[rgb];
+    var c = makeCanvas(64, 64), g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(' + rgb + ',1)'); gr.addColorStop(.45, 'rgba(' + rgb + ',.35)'); gr.addColorStop(1, 'rgba(' + rgb + ',0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return (glowCache[rgb] = c);
+  }
+  function glow(ctx, rgb, x, y, r, alpha, sx, sy, rot) {
+    if (alpha <= 0.003 || r <= 0.5) return;
+    ctx.globalAlpha = Math.min(1, alpha);
+    if (rot != null) {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(sx || 1, sy || 1);
+      ctx.drawImage(glowSprite(rgb), -r, -r, r * 2, r * 2); ctx.restore();
+    } else ctx.drawImage(glowSprite(rgb), x - r, y - r, r * 2, r * 2);
+    ctx.globalAlpha = 1;
+  }
+  function issen(x, y, o) {
+    o = o || {};
+    var lite = !!(o.lite || root.LITE), quick = !!o.quick || lite;   // quick = 연격용 경량판
+    var pal = paletteFor(normColors(o.colors)), tilt = o.angle || 0;
+    var aL = 3 * Math.PI / 4 + tilt, aD = Math.PI / 4 + tilt;    // 빛: 오른쪽 위→왼쪽 아래 · 어둠: 왼쪽 위→오른쪽 아래
+    var slashes = [], N = quick ? 4 : 10;
+    for (var i = 0; i < N; i++) slashes.push({ a: R(0, Math.PI), d: R(-90, 90), c: R(-160, 160), L: R(380, 620),
+      t0: .26 + i * (.2 / N) + R(-.01, .01), w: R(4, 10), dark: i % 2 === 1 });
+    slashes.push({ a: aL, d: 0, c: -40, L: 900, t0: I_FINAL, w: 17, dark: false, main: true });
+    slashes.push({ a: aD, d: 0, c: -40, L: 900, t0: I_FINAL + I_GAP, w: 19, dark: true, main: true });
+    var sparks = [];
+    slashes.forEach(function (sl) {
+      var n = quick ? (sl.main ? 12 : 0) : (sl.main ? 45 : 8);
+      for (var k = 0; k < n; k++) sparks.push({ sl: sl, u: R(.25, .75), a: sl.a + (Math.random() < .5 ? 1 : -1) * Math.PI / 2 + R(-.9, .9),
+        v: R(200, sl.main ? 1400 : 700), t0: sl.t0 + .03, life: R(.25, quick ? .5 : .8), size: R(.8, 2.4) });
+    });
+    var speed = []; for (var j = 0; j < (quick ? 8 : 30); j++) speed.push({ y: R(-450, 450), len: R(200, 800), w: R(.5, 2.5), off: R(0, 1), dark: j % 2 === 1 });
+    var dust = []; for (var m = 0; m < (quick ? 0 : 6); m++) dust.push({ a: R(0, 6.283), d: R(60, 340), r: R(60, 140), t0: I_FINAL + R(0, .2), dark: m % 2 === 0 });
+    var embers = []; for (var e = 0; e < (quick ? 0 : 24); e++) embers.push({ x: R(-400, 400), y: R(-250, 250), vy: R(-60, -15), vx: R(-20, 20), t0: R(.7, 1.3), life: R(.5, 1), ph: R(0, 6), dark: e % 3 === 0 });
+    var fx = { x: x, y: y, S: o.scale == null ? 1 : o.scale, aL: aL, aD: aD, t: 0, h1: false, h2: false, spd: o.speed || 1,
+      dur: quick ? 1.2 : I_DUR, mainLife: quick ? .55 : 1.2, segs: quick ? 20 : 40,
+      screen: o.screen !== false && !quick, chroma: o.chroma !== false && !quick && !root.LITE, quick: quick, pal: pal,
+      c: { gold: rgbStr(pal.light), white: rgbStr(pal.lightCore), rim: rgbStr(pal.rimLight), core: rgbStr(pal.core) },
+      onFirstHit: o.onFirstHit, onCross: o.onCross, onEnd: o.onEnd,
+      slashes: slashes, sparks: sparks, speed: speed, dust: dust, embers: embers };
+    ISSEN.push(fx); return fx;
+  }
+  function updateIssen(dt) {
+    for (var i = ISSEN.length - 1; i >= 0; i--) {
+      var fx = ISSEN[i]; fx.t += dt * fx.spd;
+      if (!fx.h1 && fx.t >= I_FINAL) { fx.h1 = true; if (fx.onFirstHit) fx.onFirstHit(fx); }
+      if (!fx.h2 && fx.t >= I_FINAL + I_GAP) { fx.h2 = true; if (fx.onCross) fx.onCross(fx); }
+      if (fx.t > fx.dur) { ISSEN.splice(i, 1); if (fx.onEnd) fx.onEnd(fx); }
+    }
+  }
+  function shakeIssen() {
+    var amp = 0;
+    ISSEN.forEach(function (fx) {
+      var t = fx.t, k = fx.quick ? .45 : 1;
+      amp = Math.max(amp, t > I_FINAL ? Math.max(0, 1 - (t - I_FINAL) / .45) * 18 * fx.S * k : (t > .26 && t < I_FINAL ? 3 * fx.S * k : 0));
+    });
+    return [(Math.random() - .5) * amp, (Math.random() - .5) * amp];
+  }
+  function sPt(fx, sl, u) {
+    var S = fx.S, dx = Math.cos(sl.a), dy = Math.sin(sl.a), nx = -dy, ny = dx, L = sl.L * S, d = sl.d * S, c = sl.c * S;
+    var p0x = fx.x - dx * L + nx * d, p0y = fx.y - dy * L + ny * d, p2x = fx.x + dx * L + nx * d, p2y = fx.y + dy * L + ny * d;
+    var p1x = fx.x + nx * (d + c), p1y = fx.y + ny * (d + c), mm = 1 - u;
+    return [mm * mm * p0x + 2 * mm * u * p1x + u * u * p2x, mm * mm * p0y + 2 * mm * u * p1y + u * u * p2y];
+  }
+  function full(ctx, style, op) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = op; ctx.fillStyle = style;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
+  }
+  // 칼날 중심선 + 법선을 한 번만 계산해 두고, 패스마다 두께만 바꿔 띠(폴리곤)로 칠함 → 점(마디) 없음
+  function ribbonFrame(pts) {
+    var n = pts.length, nr = new Array(n * 3);
+    for (var k = 0; k < n; k++) {
+      var a = pts[Math.max(0, k - 1)], b = pts[Math.min(n - 1, k + 1)], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+      nr[k * 3] = -dy / len; nr[k * 3 + 1] = dx / len; nr[k * 3 + 2] = Math.pow(Math.sin(Math.PI * cl(pts[k][2])), .6);
+    }
+    return nr;
+  }
+  function ribbon(ctx, pts, nr, base, colStr, alpha, lw, op, ox, oy) {
+    var n = pts.length; if (n < 2 || alpha <= 0.002) return;
+    ox = ox || 0; oy = oy || 0;
+    ctx.globalCompositeOperation = op; ctx.fillStyle = 'rgba(' + colStr + ',' + alpha + ')';
+    ctx.beginPath();
+    for (var k = 0; k < n; k++) {
+      var hw = base * nr[k * 3 + 2] * lw / 2, x = pts[k][0] + nr[k * 3] * hw + ox, y = pts[k][1] + nr[k * 3 + 1] * hw + oy;
+      if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    }
+    for (var j = n - 1; j >= 0; j--) {
+      var hw2 = base * nr[j * 3 + 2] * lw / 2;
+      ctx.lineTo(pts[j][0] - nr[j * 3] * hw2 + ox, pts[j][1] - nr[j * 3 + 1] * hw2 + oy);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+  function drawIssenSlash(ctx, fx, sl) {
+    var t = fx.t, S = fx.S, TRAVEL = sl.main ? .035 : .025, age = t - sl.t0; if (age < 0) return;
+    var head = cl(age / TRAVEL), life = sl.main ? fx.mainLife : .5, q = (age - TRAVEL) / life; if (q > 1) return;
+    var wm = age < TRAVEL ? .35 : (q < .08 ? .35 + q / .08 * 1.4 : 1.75 * Math.pow(1 - (q - .08) / .92, 1.4));
+    var fade = q < 0 ? 1 : Math.pow(1 - cl(q), 1.1), N = sl.main ? fx.segs : 14, pts = [], tail = age < TRAVEL ? Math.max(0, head - .6) : 0;
+    for (var k = 0; k <= N; k++) { var u = tail + (head - tail) * k / N, pp = sPt(fx, sl, u); pts.push([pp[0], pp[1], u]); }
+    var nr = ribbonFrame(pts), base = sl.w * S * wm, C = fx.c;
+    if (!sl.dark) {
+      if (fx.chroma && sl.main) {                                // 색수차: 금빛 / 보라 (풀 연출 마무리에서만)
+        ribbon(ctx, pts, nr, base, C.gold, fade * .45, 2.2, 'lighter', -4 * S, -1.5 * S);
+        ribbon(ctx, pts, nr, base, C.rim, fade * .35, 2.2, 'lighter', 4 * S, 1.5 * S);
+      }
+      if (!fx.quick || sl.main) ribbon(ctx, pts, nr, base, C.gold, fade * .2, 4, 'lighter');
+      ribbon(ctx, pts, nr, base, C.white, fade, 1, 'lighter');
+    } else {
+      if (!fx.quick || sl.main) ribbon(ctx, pts, nr, base, C.rim, fade * .55, 2, 'lighter');   // 보라 테두리·번짐
+      ribbon(ctx, pts, nr, base, C.core, fade * .95, 1.15, 'source-over');                      // 검은 칼날
+      if (sl.main) ribbon(ctx, pts, nr, base, C.rim, fade * .9, .28, 'lighter');                // 날 하이라이트
+    }
+    if (age < TRAVEL) {                                          // 칼끝 광채: 진행 방향으로 길쭉하게
+      var hx = pts[N][0], hy = pts[N][1], ang = Math.atan2(hy - pts[N - 1][1], hx - pts[N - 1][0]);
+      ctx.globalCompositeOperation = 'lighter';
+      glow(ctx, '255,252,240', hx, hy, (sl.main ? 46 : 22) * S, .9, 1.8, .32, ang);
+    }
+  }
+  function drawIssenOne(ctx, fx) {
+    var t = fx.t, S = fx.S, cx = fx.x, cy = fx.y, C = fx.c;
+    ctx.save(); ctx.lineCap = 'butt';
+    if (fx.screen && t > .24 && t < I_FINAL + .14) {             // 시간 정지: 화면 어둡게
+      var pd = t < I_FINAL ? cl((t - .24) / .05) : 1 - cl((t - I_FINAL) / .14);
+      full(ctx, 'rgba(6,5,10,' + (.5 * pd) + ')', 'source-over');
+    }
+    ctx.globalCompositeOperation = 'source-over';                 // 연기 (스프라이트)
+    for (var di = 0; di < fx.dust.length; di++) {
+      var m = fx.dust[di], p = (t - m.t0) / 1.4; if (p < 0 || p > 1) continue;
+      var d = m.d * S * eo(p);
+      glow(ctx, m.dark ? C.core : C.gold, cx + Math.cos(m.a) * d, cy + Math.sin(m.a) * d * .6 - p * 30 * S, m.r * S * (.5 + p), Math.sin(p * Math.PI) * (m.dark ? .5 : .25));
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    if (t < I_DASH) {                                             // 기 모으기: 금빛 + 보라 소용돌이
+      var p0 = t / I_DASH;
+      glow(ctx, C.gold, cx + Math.cos(t * 30) * 18 * S * (1 - p0), cy + Math.sin(t * 30) * 10 * S * (1 - p0), (40 + p0 * 30) * S, .45 * p0);
+      glow(ctx, C.rim, cx - Math.cos(t * 30) * 18 * S * (1 - p0), cy - Math.sin(t * 30) * 10 * S * (1 - p0), (40 + p0 * 30) * S, .45 * p0);
+    }
+    if (t >= I_DASH && t < .6) {                                  // 돌진 섬광 2줄 + 스피드 라인 (색별로 한 번에)
+      for (var idx = 0; idx < 2; idx++) {
+        var pdsh = (t - I_DASH - idx * .02) / .06; if (pdsh < 0) continue;
+        var col = idx ? C.rim : C.gold, L = 1400 * S, ang = (idx ? fx.aD : fx.aL) + Math.PI, dx = Math.cos(ang), dy = Math.sin(ang);
+        var hx = cx - dx * L + dx * 2 * L * cl(pdsh), hy = cy - dy * L + dy * 2 * L * cl(pdsh), fade = pdsh < 1 ? 1 : cl(1 - (t - I_DASH - .06) / .3);
+        if (fade <= 0) continue;
+        var widths = fx.quick ? [[9, .25], [3, .9]] : [[26, .08], [10, .2], [3, .9]];
+        for (var wi = 0; wi < widths.length; wi++) {
+          ctx.strokeStyle = 'rgba(' + (widths[wi][0] === 3 ? '255,245,230' : col) + ',' + (widths[wi][1] * fade) + ')'; ctx.lineWidth = widths[wi][0] * S;
+          ctx.beginPath(); ctx.moveTo(cx - dx * L, cy - dy * L); ctx.lineTo(hx, hy); ctx.stroke();
+        }
+        ctx.strokeStyle = 'rgba(' + col + ',' + (.3 * fade) + ')'; ctx.lineWidth = 1.4 * S; ctx.beginPath();
+        for (var li = 0; li < fx.speed.length; li++) {
+          var l = fx.speed[li]; if (l.dark !== (idx === 1)) continue;
+          var off = l.y * S, px = -dy * off, py = dx * off, sh = ((l.off + t * 8) % 1) * 2 * L - L, ll = l.len * S;
+          ctx.moveTo(cx + px + dx * sh, cy + py + dy * sh); ctx.lineTo(cx + px + dx * (sh + ll), cy + py + dy * (sh + ll));
+        }
+        ctx.stroke();
+      }
+    }
+    for (var si = 0; si < fx.slashes.length; si++) drawIssenSlash(ctx, fx, fx.slashes[si]);
+    ctx.globalCompositeOperation = 'lighter';
+    var waves = fx.quick ? [[fx.aD, C.rim, I_FINAL + I_GAP]] : [[fx.aL, C.gold, I_FINAL], [fx.aD, C.rim, I_FINAL + I_GAP]];
+    for (var wv = 0; wv < waves.length; wv++) {                   // 충격파
+      var w = waves[wv], qw = (t - w[2]) / .55; if (qw < 0 || qw >= 1) continue;
+      var rw = (30 + 700 * eo(qw)) * S * (fx.quick ? .7 : 1);
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(w[0]);
+      ctx.strokeStyle = 'rgba(' + w[1] + ',' + ((1 - qw) * .55) + ')'; ctx.lineWidth = (14 * (1 - qw) + 1) * S;
+      ctx.beginPath(); ctx.ellipse(0, 0, rw, rw * .22, 0, 0, 7); ctx.stroke(); ctx.restore();
+    }
+    var b = t - I_FINAL;
+    if (b >= 0 && b < 1) {                                        // 교차점 블룸 (스프라이트 2장)
+      var rr = (100 + 300 * eo(b)) * S * (fx.quick ? .6 : 1), al = Math.pow(1 - b, 2) * .8;
+      glow(ctx, '255,250,235', cx, cy, rr * .55, al);
+      glow(ctx, C.rim, cx, cy, rr, al * .35);
+    }
+    // 불꽃: 색·밝기 3단계로 묶어서 한 번에 그림 (수백 번 stroke → 6번)
+    var buckets = {};
+    for (var pi = 0; pi < fx.sparks.length; pi++) {
+      var sp = fx.sparks[pi], age = t - sp.t0; if (age < 0 || age > sp.life) continue;
+      var o = sPt(fx, sp.sl, sp.u), v = sp.v * S, ex = Math.exp(-3 * age), dist = v * (1 - ex) / 3;
+      var x = o[0] + Math.cos(sp.a) * dist, y = o[1] + Math.sin(sp.a) * dist + 260 * S * age * age;
+      var vx = Math.cos(sp.a) * v * ex, vy = Math.sin(sp.a) * v * ex + 520 * S * age, lv = Math.min(2, (age / sp.life * 3) | 0);
+      var key = (sp.sl.dark ? 'd' : 'l') + lv, arr = buckets[key] || (buckets[key] = []);
+      arr.push(x, y, x - vx * .03, y - vy * .03);
+    }
+    ctx.lineWidth = 1.5 * S;
+    for (var key2 in buckets) {
+      var a2 = buckets[key2], lvl = +key2[1], alp = [1, .65, .3][lvl];
+      ctx.strokeStyle = key2[0] === 'd' ? 'rgba(' + C.rim + ',' + alp + ')' : 'rgba(255,' + (255 - lvl * 25) + ',' + (190 - lvl * 50) + ',' + alp + ')';
+      ctx.beginPath();
+      for (var q2 = 0; q2 < a2.length; q2 += 4) { ctx.moveTo(a2[q2], a2[q2 + 1]); ctx.lineTo(a2[q2 + 2], a2[q2 + 3]); }
+      ctx.stroke();
+    }
+    if (fx.embers.length) {                                       // 잔불: 위로 흐르는 가는 빛줄기 (색별 한 번에)
+      ctx.lineWidth = 1.1 * S;
+      for (var pass = 0; pass < 2; pass++) {
+        ctx.strokeStyle = 'rgba(' + (pass ? C.rim : '255,215,120') + ',.45)'; ctx.beginPath();
+        for (var ei = 0; ei < fx.embers.length; ei++) {
+          var em = fx.embers[ei]; if (em.dark !== !!pass) continue;
+          var ea = t - em.t0; if (ea < 0 || ea > em.life) continue;
+          var ex2 = cx + em.x * S + em.vx * ea * S + Math.sin(ea * 4 + em.ph) * 8 * S, ey2 = cy + em.y * S + em.vy * ea * S;
+          ctx.moveTo(ex2, ey2); ctx.lineTo(ex2 - em.vx * .08 * S, ey2 + 7 * S * Math.sin(ea / em.life * Math.PI));
+        }
+        ctx.stroke();
+      }
+    }
+    if (fx.screen) {                                              // 일섬 순간: 반전 → 플래시
+      if (t >= I_FINAL && t < I_FINAL + .03) full(ctx, '#fff6e0', 'difference');
+      else if (t >= I_FINAL + .03 && t < I_FINAL + .28) {
+        var pf = (t - I_FINAL - .03) / .25, again = t >= I_FINAL + I_GAP && t < I_FINAL + I_GAP + .05 ? .35 : 0;
+        full(ctx, 'rgba(255,246,225,' + (Math.pow(1 - pf, 2) * .75 + again) + ')', 'lighter');
+      }
+    }
+    if (fx.chroma && fx.screen && t > I_FINAL && t < I_FINAL + .5) {   // 색수차 잔상 (0.5초로 단축)
+      var cv = ctx.canvas, kk = cv.clientWidth ? cv.width / cv.clientWidth : 1;
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = .16 * (1 - (t - I_FINAL) / .5); ctx.drawImage(cv, -7 * S * kk, 0); ctx.restore();
+    }
+    ctx.restore();
+  }
+  function drawIssen(ctx) { for (var i = 0; i < ISSEN.length; i++) drawIssenOne(ctx, ISSEN[i]); }
+
+  // ---------- 쌍검 일섬 7연격 ----------
+  // 1~6타: 빠른 쌍검 일섬 (화면 연출 없이, 각도·위치·크기 변화) · 7타: 풀 연출 쌍검 일섬
+  //   TwinBladeVFX.issenCombo(x, y, { count: 7, scale, onHit(n, isFinal), onFinish(hits) })
+  var IQ = [], iclock = 0;
+  function issenCombo(x, y, opt) {
+    opt = opt || {};
+    var count = opt.count || 7, S = opt.scale == null ? 1 : opt.scale;
+    var interval = opt.interval == null ? 0.2 : opt.interval, gap = opt.finisherGap == null ? 0.3 : opt.finisherGap;
+    var spread = opt.spread == null ? 70 : opt.spread;           // 위치 흔들림 (700px 기준 px)
+    var tilts = [0, .42, -.36, .2, -.5, .3, 0];
+    var state = { hits: 0, done: 0, count: count, cancelled: false };
+    if (opt.dim !== false) dimTarget = opt.dim == null ? 0.3 : opt.dim;
+    for (var i = 0; i < count; i++) {
+      var last = i === count - 1, j = (i * 7919) % 97 / 97, k = (i * 104729) % 89 / 89;
+      IQ.push({ at: i * interval + (last && count > 1 ? gap : 0), t0: null, state: state, last: last,
+        x: x + (last ? 0 : (j - .5) * 2 * spread * S), y: y + (last ? 0 : (k - .5) * 2 * spread * .7 * S),
+        o: { scale: S * (last ? 1.15 : .72 + .2 * k), angle: last ? 0 : tilts[i % tilts.length],
+             speed: last ? 1 : (opt.speed || 1.8), quick: !last, chroma: !!opt.chroma, colors: opt.colors },   // 색수차(화면 복사)는 가장 무거워서 연격에선 기본 끔
+        onHit: opt.onHit, onFinish: opt.onFinish });
+      if (opt.storm && !last) IQ[IQ.length - 1].storm = true;
+    }
+    return { cancel: function () { state.cancelled = true; dimTarget = 0; } };
+  }
+  function runIssenQueue(dt) {
+    iclock += dt;
+    for (var i = IQ.length - 1; i >= 0; i--) {
+      var q = IQ[i];
+      if (q.state.cancelled) { IQ.splice(i, 1); continue; }
+      if (q.t0 == null) q.t0 = iclock - dt;
+      if (iclock - q.t0 < q.at) continue;
+      IQ.splice(i, 1);
+      (function (q) {
+        var o = q.o;
+        o.onFirstHit = function () { q.state.hits++; if (q.onHit) q.onHit(q.state.hits, false); };
+        o.onCross = function () { q.state.hits++; if (q.onHit) q.onHit(q.state.hits, q.last); };
+        o.onEnd = function () { q.state.done++; if (q.state.done === q.state.count) { dimTarget = 0; if (q.onFinish) q.onFinish(q.state.hits); } };
+        issen(q.x, q.y, o);
+        if (q.storm) slashStorm(q.x, q.y, { count: 6, size: o.scale * .55, duration: .12, radius: .2, colors: o.colors });
+      })(q);
+    }
+  }
+
+  // ---------- 연속 시전 (콤보) ----------
+  // 예) TwinBladeVFX.combo(x, y, { count: 7, size: 0.6, onHit: (n) => {}, onFinish: () => {} })
+  //   n = 누적 타수 (1회 시전 = 2타). 마지막 시전은 크게 터지는 마무리타.
+  var queue = [];
+  function combo(x, y, opt) {
+    opt = opt || {};
+    var count = opt.count || 7, size = opt.size == null ? 1 : opt.size;
+    var interval = opt.interval == null ? 0.15 : opt.interval;    // 시전 간 간격(초) — 난사
+    var spread = opt.spread == null ? 0.17 : opt.spread;          // 위치 흩뿌림 (1920px 대비 비율)
+    var finisherGap = opt.finisherGap == null ? 0.22 : opt.finisherGap;
+    var state = { hits: 0, done: 0, count: count, cancelled: false };
+    var storm = opt.storm !== false;                               // 참격 폭풍 (기본 켬)
+    if (storm && opt.dim !== false) dimTarget = opt.dim == null ? 0.38 : opt.dim;
+    var angles = [-8, 34, -41, 17, -26, 48, 0];
+    for (var i = 0; i < count; i++) {
+      var last = i === count - 1;
+      var j = (i * 7919) % 97 / 97;                               // 고정된 의사난수 → 매번 같은 패턴
+      var k = (i * 104729) % 89 / 89;
+      queue.push({
+        at: i * interval + (last && count > 1 ? finisherGap : 0), state: state,
+        x: x + (last ? 0 : (j - 0.5) * 2 * spread * 1920 * size),
+        y: y + (last ? 0 : (k - 0.5) * 2 * spread * 1080 * size),
+        opt: {
+          size: size * (last ? 1.45 : 0.62 + 0.3 * k),
+          rotation: last ? 0 : angles[i % angles.length],
+          mirror: !last && i % 2 === 1,
+          speed: last ? 1 : (opt.speed || 1.7),
+          secondDelay: last ? 0.11 : 0.06, impactDelay: last ? 0.05 : 0.0,
+          shakeAmount: (opt.shakeAmount == null ? 1 : opt.shakeAmount) * (last ? 1.7 : 0.45),
+          flash: last ? true : false,
+          colors: opt.colors, alpha: opt.alpha
+        },
+        last: last, onHit: opt.onHit, onFinish: opt.onFinish,
+        storm: storm ? (last
+          ? { count: 46, duration: 0.42, radius: 0.42, delay: 0.05, lengthScale: 1.25 }
+          : { count: 11, duration: 0.16, radius: 0.34 }) : null,
+        cx: x, cy: y, size: size, colors: opt.colors
+      });
+    }
+    return { cancel: function () { state.cancelled = true; dimTarget = 0; } };
+  }
+  var clock = 0;
+  function runQueue(dt) {
+    clock += dt;
+    for (var i = queue.length - 1; i >= 0; i--) {
+      var q = queue[i];
+      if (q.state.cancelled) { queue.splice(i, 1); continue; }
+      if (q.t0 == null) q.t0 = clock - dt;
+      if (clock - q.t0 < q.at) continue;
+      queue.splice(i, 1);
+      (function (q) {
+        var o = q.opt;
+        o.onFirstHit = function () { q.state.hits++; if (q.onHit) q.onHit(q.state.hits, false); };
+        o.onCross = function () { q.state.hits++; if (q.onHit) q.onHit(q.state.hits, q.last); };
+        o.onEnd = function () {
+          q.state.done++;
+          if (q.state.done === q.state.count) { dimTarget = 0; if (q.onFinish) q.onFinish(q.state.hits); }
+        };
+        spawn(q.x, q.y, o);
+        if (q.storm) {
+          var so = q.storm; so.size = q.size; so.colors = q.colors;
+          slashStorm(q.cx, q.cy, so);
+        }
+      })(q);
+    }
+  }
+
+  // ---------- 공개 API ----------
+  function spawn(x, y, opt) {
+    if (!src) throw new Error('TwinBladeVFX: load()를 먼저 호출하세요');
+    var fx = new TwinBlade(x, y, opt); live.push(fx); return fx;
+  }
+  function updateAll(dt) {
+    runQueue(dt);
+    updateCuts(dt);
+    runIssenQueue(dt);
+    updateIssen(dt);
+    for (var i = live.length - 1; i >= 0; i--) { live[i].update(dt); if (live[i].dead) live.splice(i, 1); }
+  }
+  function drawAll(ctx) {
+    drawCuts(ctx);
+    for (var i = 0; i < live.length; i++) live[i].draw(ctx);
+    drawIssen(ctx);
+  }
+  function shake() {
+    var o = [0, 0];
+    for (var i = 0; i < live.length; i++) { var s = live[i].shake(); o[0] += s[0]; o[1] += s[1]; }
+    var si = shakeIssen(); o[0] += si[0]; o[1] += si[1];
+    return o;
+  }
+  function preload(colors) { getSet(normColors(colors)); }
+
+  root.TwinBladeVFX = {
+    PRESETS: PRESETS,
+    /** 기본 색 교체: setDefaultColors('ice') 또는 setDefaultColors({light:'#..', rim:'#..', core:'#..'}) */
+    setDefaultColors: function (c) { DEFAULT_COLORS = normColors(c); if (src) preload(DEFAULT_COLORS); return DEFAULT_COLORS; },
+    getDefaultColors: function () { return DEFAULT_COLORS; },
+    load: load, spawn: spawn, combo: combo, slashStorm: slashStorm, issen: issen, issenCombo: issenCombo, updateAll: updateAll, drawAll: drawAll, shake: shake, preload: preload,
+    active: function () { return live.slice(); },
+    busy: function () { return live.length > 0 || queue.length > 0 || cuts.length > 0 || ISSEN.length > 0 || IQ.length > 0; },
+    clear: function () { live.length = 0; queue.length = 0; cuts.length = 0; ISSEN.length = 0; IQ.length = 0; dimTarget = 0; dimLevel = 0; }
+  };
+})(typeof window !== 'undefined' ? window : this);
+
 
 </script>
 <script>
@@ -8667,15 +9436,16 @@ let effects=[];
 function fx(dur,draw,delay=0){return new Promise(res=>{effects.push({t0:performance.now()+delay,dur,draw,res});kick()})}
 function vloop(now){const dt=Math.min(.05,(now-flast)/1000);flast=now;fcx.clearRect(0,0,FW,FH);
   effects=effects.filter(e=>{const p=(now-e.t0)/(e.dur/SPEED);if(p<0)return true;if(p>=1){e.res();return false}e.draw(fcx,p);return true});
-  const ls=window.LightSlash&&LightSlash.active(),db=window.DarkBurst&&DarkBurst.active(),ds=window.DarkStorm&&DarkStorm.active(),lf=window.LightFist&&LightFist.active(),rf=window.RedFist&&RedFist.active();
+  const ls=window.LightSlash&&LightSlash.active(),db=window.DarkBurst&&DarkBurst.active(),ds=window.DarkStorm&&DarkStorm.active(),tw=window.TwinBladeVFX&&TwinBladeVFX.busy(),lf=window.LightFist&&LightFist.active(),rf=window.RedFist&&RedFist.active();
   let sx=0,sy=0;
   if(lf){LightFist.draw(fcx);LightFist.update(dt*SPEED);const v=LightFist.shake();sx+=v[0];sy+=v[1]}
   if(rf){RedFist.draw(fcx);RedFist.update(dt*SPEED);const v=RedFist.shake();sx+=v[0];sy+=v[1]}
   if(ls){LightSlash.draw(fcx);LightSlash.update(dt);const v=LightSlash.shake();sx+=v[0];sy+=v[1]}
+  if(tw){TwinBladeVFX.updateAll(dt*SPEED);TwinBladeVFX.drawAll(fcx);const v=TwinBladeVFX.shake();sx+=v[0];sy+=v[1]}
   if(ds){DarkStorm.draw(fcx);DarkStorm.update(dt*SPEED);const v=DarkStorm.shake();sx+=v[0];sy+=v[1]}
   if(db){DarkBurst.draw(fcx);DarkBurst.update(dt*SPEED);const v=DarkBurst.shake();sx+=v[0];sy+=v[1]}
-  stageEl.style.translate=(ls||db||ds||lf||rf)?`${sx.toFixed(1)}px ${sy.toFixed(1)}px`:'';
-  if(ls||db||ds||lf||rf||effects.length)fraf=requestAnimationFrame(vloop);else{fraf=0;fcx.clearRect(0,0,FW,FH)}}
+  stageEl.style.translate=(ls||db||ds||lf||rf||tw)?`${sx.toFixed(1)}px ${sy.toFixed(1)}px`:'';
+  if(ls||db||ds||lf||rf||tw||effects.length)fraf=requestAnimationFrame(vloop);else{fraf=0;fcx.clearRect(0,0,FW,FH)}}
 /* 격파 시 가루가 되어 흩어지는 연출 */
 async function vfxDust(img){
   if(!img)return;img.classList.add('dust');
@@ -8696,6 +9466,10 @@ async function vfxDust(img){
 }
 function foeBox(){const s=stageEl.getBoundingClientRect(),r=sprite.getBoundingClientRect();return{x:r.left-s.left+r.width/2,y:r.top-s.top+r.height*.45,w:r.width,h:r.height}}
 function heroBox(){return{x:FW*.12,y:FH*.72,w:FW*.25,h:FH*.6}}
+/* 로스바이세 일섬 — TwinBladeVFX 쌍검 일섬 (빛·어둠 X자 교차 순간 피해) */
+function vfxTwinIssen(onHit,lite){return new Promise(res=>{const t=foeBox();if(!window.TwinBladeVFX){onHit();return res()}
+  TwinBladeVFX.issen(t.x,t.y,{scale:Math.min(FW,FH)/700*(lite?.7:.85),quick:!!lite,screen:!lite&&!window.LITE,chroma:!lite&&!window.LITE,angle:lite?(Math.random()-.5)*.8:0,
+    onFirstHit:()=>{sfx('slash',.5)},onCross:()=>{onHit();setTimeout(res,(lite?150:450)/SPEED)}});kick()})}
 function vfxLightSlash(onHit,lite){return new Promise(res=>{const t=foeBox();if(!window.LightSlash){onHit();return res()}
   LightSlash.spawn(t.x+(lite?(Math.random()-.5)*t.w*.2:0),t.y+(lite?(Math.random()-.5)*t.h*.2:0),{scale:Math.min(FW,FH)/700*(lite?.75:.85),angle:lite&&Math.random()<.5?2.6:-.35,screen:!lite&&!window.LITE,chroma:!lite&&!window.LITE,lite,onHit:()=>{onHit();setTimeout(res,lite?150:450/SPEED)}});kick()})}
 /* 릴리바이스 — 빛의 주먹 (LightFist) / 오버클럭 직후 붉은 주먹 (RedFist) */
@@ -8784,7 +9558,7 @@ async function heroMove(h,m,o={}){
   const r=damage(h,f,m,o);const hits=m.hits||1;let dealt=0,parts=[];
   const applyPart=(part,last)=>{if(!alive(f))return;sfx('hit',last?.7:.45);f.cur=Math.max(0,f.cur-part);addDealt(part);parts.push(part);foeSprite('hit',520);popFx((r.crit&&last?'<small>CRITICAL</small>':'')+part,r.crit&&last?'crit':'');if(last&&(o.ult||r.crit))shakeFx();render()};
   const apply=()=>{for(let i=0;i<hits;i++){const part=i===hits-1?r.dmg-dealt:Math.round(r.dmg/hits);dealt+=part;applyPart(part,i===hits-1)}};
-  if(m.vfx==='light'){sfx('slash',o.lite?.6:.9);await vfxLightSlash(apply,o.lite)}
+  if(m.vfx==='light'){sfx('slash',o.lite?.6:.9);await(window.TwinBladeVFX?vfxTwinIssen(apply,o.lite):vfxLightSlash(apply,o.lite))}
   else if(m.vfx==='lightfist'){const n=o.ult?1:fistCount(h);if(n<=1)await vfxFist(apply);else{await fistBurst(h,n,m,{lite:false});return}}
   else if(m.vfx==='redfist'){await vfxFist(apply,{red:true})}
   else if(m.vfx==='darkburst'){await vfxDarkBurst(apply,!!m.big)}
@@ -8875,12 +9649,17 @@ async function fistBurst(h,n,m,o={}){
 function healAll(pct,why){const parts=[];aliveH().forEach(u=>{const bonus=(u.id==='one')?1.2:1;const v=Math.min(u.hp-u.cur,Math.round(u.hp*pct*bonus));if(v>0){u.cur+=v;parts.push(`<strong>${u.name}</strong> +${v}`)}});if(parts.length)log(`${why} — ${parts.join(' · ')} 회복.`,'sys');render()}
 async function rodBurst(h,n){
   const f=foe();if(!alive(f))return;const m={...h.H.skill,pow:Math.round(h.H.skill.pow*.5)};let fired=0,sum=0;
-  await new Promise(res=>{for(let i=0;i<n;i++){setTimeout(()=>{if(B.over||!alive(f)){if(++fired>=n)res();return}const t=foeBox();sfx('slash',.55);
-      LightSlash.spawn(t.x+(Math.random()-.5)*t.w*.25,t.y+(Math.random()-.5)*t.h*.25,{scale:Math.min(FW,FH)/700*.75,angle:i%2?2.6:-.35,screen:false,chroma:false,lite:true,onHit:()=>{
-        if(B.over||!alive(f)){if(++fired>=n)res();return}const r=damage(h,f,m);f.cur=Math.max(0,f.cur-r.dmg);addDealt(r.dmg);sum+=r.dmg;h.ult=Math.min(100,h.ult+6);addDom(4,h);breakHit(f,8,r.e);sfx('hit',.45);foeSprite('hit',400);popFx((r.crit?'<small>CRITICAL</small>':'')+r.dmg,r.crit?'crit':'');render();
-        log(`<strong>일섬 ×${i+1}</strong> — <em>${f.short}</em>에게 <i>${r.dmg}</i>의 피해!${r.crit?' <span style="color:#ffe39a">급소!</span>':''}`,r.crit?'crit hero':'hero');
-        if(++fired>=n)res()}});kick()},i*90/SPEED)}});
-  log(`일섬 7연속 — 총 <i>${sum}</i>의 피해!`,'ult');h.haste=1;render();await sleep(300);
+  const one=(i)=>{if(B.over||!alive(f))return;const r=damage(h,f,m);f.cur=Math.max(0,f.cur-r.dmg);addDealt(r.dmg);sum+=r.dmg;h.ult=Math.min(100,h.ult+6);addDom(4,h);breakHit(f,8,r.e);sfx('hit',.45);foeSprite('hit',400);popFx((r.crit?'<small>CRITICAL</small>':'')+r.dmg,r.crit?'crit':'');render();
+    log(`<strong>일섬 ×${i}</strong> — <em>${f.short}</em>에게 <i>${r.dmg}</i>의 피해!${r.crit?' <span style="color:#ffe39a">급소!</span>':''}`,r.crit?'crit hero':'hero')};
+  if(window.TwinBladeVFX){const t=foeBox();
+    /* 쌍검 일섬 n연격: 1~(n-1)타 경량, 마지막 풀 연출. 시전마다 빛 1타 + X자 교차 1타 → 교차 순간 피해 */
+    await new Promise(res=>{let done=false;const fin=()=>{if(!done){done=true;res()}};
+      TwinBladeVFX.issenCombo(t.x,t.y,{count:n,scale:Math.min(FW,FH)/700,speed:1.8,dim:.3,chroma:false,
+        onHit:(k,last)=>{if(k%2===0){fired++;one(fired);if(fired>=n||!alive(f))setTimeout(fin,(last?500:120)/SPEED)}else sfx('slash',.5)},onFinish:fin});kick();
+      setTimeout(fin,(n*260+2600)/SPEED)})}
+  else await new Promise(res=>{for(let i=0;i<n;i++){setTimeout(()=>{if(B.over||!alive(f)){if(++fired>=n)res();return}const t=foeBox();sfx('slash',.55);
+      LightSlash.spawn(t.x+(Math.random()-.5)*t.w*.25,t.y+(Math.random()-.5)*t.h*.25,{scale:Math.min(FW,FH)/700*.75,angle:i%2?2.6:-.35,screen:false,chroma:false,lite:true,onHit:()=>{one(i+1);if(++fired>=n)res()}});kick()},i*90/SPEED)}});
+  log(`일섬 ${n}연속 — 총 <i>${sum}</i>의 피해!`,'ult');h.haste=1;render();await sleep(300);
 }
 /* ===== 영역 공존/공명 연출: 화면을 캐릭터 수만큼 쪼개고, 각 조각에 그 캐릭터의 영역(색·일러스트)을 채운 뒤 번개 균열로 가른다 ===== */
 const DOM_STYLE={rod:{c0:'#120a22',c1:'#6a4bd6',c2:'#e2d6ff',glow:'#c9b6ff'},yuria:{c0:'#2a0308',c1:'#c40d24',c2:'#ff8a9a',glow:'#ff1c3a'},one:{c0:'#0b0b0f',c1:'#5a5a6a',c2:'#f2f2f8',glow:'#ffffff'},lily:{c0:'#2a1f06',c1:'#c99a1e',c2:'#fff3c4',glow:'#ffe08a'}};
@@ -8974,7 +9753,7 @@ async function finish(win){
   log(win?`<strong>승리!</strong> ${B.turn}턴 · 준 피해 <i>${B.dealt}</i>`:'<strong>패배…</strong>','win'.replace('win',win?'win':'lose'));
   render();end(win);$('turnTag').textContent='END';
 }
-function stop(){runId++;running=false;tbroot.className='tbroot';tbroot.querySelectorAll('.ultv,.banner,.coex').forEach(e=>e.remove());try{LightSlash.clear()}catch(e){}try{DarkBurst.clear();DarkStorm.clear()}catch(e){}try{LightFist.clear();RedFist.clear()}catch(e){}}
+function stop(){runId++;running=false;tbroot.className='tbroot';tbroot.querySelectorAll('.ultv,.banner,.coex').forEach(e=>e.remove());try{LightSlash.clear()}catch(e){}try{TwinBladeVFX.clear()}catch(e){}try{DarkBurst.clear();DarkStorm.clear()}catch(e){}try{LightFist.clear();RedFist.clear()}catch(e){}}
 /* ===== 조작 ===== */
 $('bSpeed').onclick=()=>{SPEED=SPEED>=4?1:SPEED*2;localStorage.setItem('hm_tb_speed',SPEED);$('bSpeed').textContent='속도 ×'+SPEED};$('bSpeed').textContent='속도 ×'+SPEED;
 $('bFlee2').onclick=()=>document.getElementById('bFlee').click();
